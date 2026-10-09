@@ -14,6 +14,7 @@ import (
 	"github.com/ts91/urscript-ls/internal/diagnostics"
 	"github.com/ts91/urscript-ls/internal/docsymbols"
 	"github.com/ts91/urscript-ls/internal/document"
+	"github.com/ts91/urscript-ls/internal/format"
 	"github.com/ts91/urscript-ls/internal/hover"
 	"github.com/ts91/urscript-ls/internal/parser"
 	"github.com/ts91/urscript-ls/internal/references"
@@ -65,8 +66,9 @@ func (s *Server) Initialize(_ context.Context, _ *protocol.InitializeParams) (*p
 			HoverProvider:          protocol.Boolean(true),
 			DefinitionProvider:     protocol.Boolean(true),
 			DocumentSymbolProvider: protocol.Boolean(true),
-			ReferencesProvider:     protocol.Boolean(true),
-			RenameProvider:         protocol.Boolean(true),
+			ReferencesProvider:             protocol.Boolean(true),
+			RenameProvider:                 protocol.Boolean(true),
+			DocumentFormattingProvider:     protocol.Boolean(true),
 			CompletionProvider: &protocol.CompletionOptions{
 				TriggerCharacters: []string{"."},
 			},
@@ -196,6 +198,15 @@ func (s *Server) Rename(_ context.Context, params *protocol.RenameParams) (*prot
 			params.TextDocument.URI: edits,
 		},
 	}, nil
+}
+
+// Formatting reformats the entire document.
+func (s *Server) Formatting(_ context.Context, params *protocol.DocumentFormattingParams) ([]protocol.TextEdit, error) {
+	content, ok := s.store.Get(params.TextDocument.URI)
+	if !ok {
+		return nil, nil
+	}
+	return format.Format(content, params.Options), nil
 }
 
 // wordAt extracts the identifier at the given position.
