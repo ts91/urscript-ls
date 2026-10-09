@@ -240,6 +240,43 @@ func lastStmtPos(stmts []parser.Node) parser.Pos {
 	return parser.NodePos(stmts[len(stmts)-1])
 }
 
+// Merge combines multiple indices into one, giving priority to the primary index.
+func Merge(primary *Index, others ...*Index) *Index {
+	merged := &Index{
+		byName: make(map[string][]Symbol),
+	}
+	if primary != nil {
+		for _, s := range primary.Symbols {
+			merged.add(s)
+		}
+	}
+	seen := make(map[string]bool)
+	for _, s := range merged.Symbols {
+		if s.Kind == KindFunction || s.Kind == KindThread {
+			seen[s.Name] = true
+		}
+	}
+	for _, idx := range others {
+		if idx == nil {
+			continue
+		}
+		for _, s := range idx.Symbols {
+			if s.Kind == KindParam {
+				continue
+			}
+			// Don't duplicate functions/threads already in the primary file.
+			if (s.Kind == KindFunction || s.Kind == KindThread) && seen[s.Name] {
+				continue
+			}
+			merged.add(s)
+			if s.Kind == KindFunction || s.Kind == KindThread {
+				seen[s.Name] = true
+			}
+		}
+	}
+	return merged
+}
+
 func trimSpace(s string) string {
 	i := 0
 	for i < len(s) && (s[i] == ' ' || s[i] == '\t' || s[i] == '\r') {

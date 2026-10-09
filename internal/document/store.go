@@ -82,3 +82,27 @@ func (s *Store) GetIndex(u uri.URI) *symbols.Index {
 	}
 	return nil
 }
+
+// AllIndices returns the symbol index from every document in the store.
+func (s *Store) AllIndices() map[uri.URI]*symbols.Index {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	result := make(map[uri.URI]*symbols.Index, len(s.docs))
+	for u, e := range s.docs {
+		if e.index != nil {
+			result[u] = e.index
+		}
+	}
+	return result
+}
+
+// AllURIs returns the URIs of all documents in the store.
+func (s *Store) AllURIs() []uri.URI {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	uris := make([]uri.URI, 0, len(s.docs))
+	for u := range s.docs {
+		uris = append(uris, u)
+	}
+	return uris
+}

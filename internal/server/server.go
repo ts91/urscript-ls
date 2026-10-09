@@ -2,6 +2,9 @@ package server
 
 import (
 	"context"
+	"log"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -30,6 +33,7 @@ type Server struct {
 	client   protocol.Client
 	store    *document.Store
 	registry *builtins.Registry
+	roots    []string // workspace root filesystem paths
 }
 
 // NewServer creates a new URScript language server.
@@ -54,7 +58,17 @@ func (s *Server) getClient() protocol.Client {
 }
 
 // Initialize handles the initialize request.
-func (s *Server) Initialize(_ context.Context, _ *protocol.InitializeParams) (*protocol.InitializeResult, error) {
+func (s *Server) Initialize(_ context.Context, params *protocol.InitializeParams) (*protocol.InitializeResult, error) {
+	// Capture workspace roots for background scanning.
+	if folders, ok := params.WorkspaceFolders.Get(); ok {
+		for _, f := range folders {
+			s.roots = append(s.roots, f.URI.Path())
+		}
+	}
+	if len(s.roots) == 0 && params.RootURI != nil {
+		s.roots = append(s.roots, params.RootURI.Path())
+	}
+
 	openClose := true
 	syncKind := protocol.TextDocumentSyncKindFull
 	return &protocol.InitializeResult{
@@ -86,7 +100,40 @@ func (s *Server) Initialize(_ context.Context, _ *protocol.InitializeParams) (*p
 
 // Initialized is called after the client confirms initialization.
 func (s *Server) Initialized(_ context.Context, _ *protocol.InitializedParams) error {
+	go s.scanWorkspace()
 	return nil
+}
+
+// scanWorkspace reads all .script/.urscript files in the workspace roots
+// and indexes them so cross-file features work immediately.
+func (s *Server) scanWorkspace() {
+	for _, root := range s.roots {
+		filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+			if err != nil || info.IsDir() {
+				return nil
+			}
+			ext := filepath.Ext(path)
+			if ext != ".script" && ext != ".urscript" && ext != ".variables" {
+				return nil
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return nil
+			}
+			docURI := uri.File(path)
+			content := string(data)
+
+			// Only load if not already open in the editor.
+			if _, ok := s.store.Get(docURI); !ok {
+				s.store.Open(docURI, content)
+				prog, _ := parser.Parse(content)
+				idx := symbols.Build(prog, content)
+				s.store.SetIndex(docURI, idx)
+			}
+			return nil
+		})
+	}
+	log.Printf("workspace scan complete: %d files indexed", len(s.store.AllURIs()))
 }
 
 // Shutdown is called before Exit.
@@ -127,13 +174,13 @@ func (s *Server) Hover(_ context.Context, params *protocol.HoverParams) (*protoc
 	if !ok {
 		return nil, nil
 	}
-	idx := s.store.GetIndex(params.TextDocument.URI)
+	idx := s.mergedIndex(params.TextDocument.URI)
 	return hover.Provide(content, params.Position, s.registry, idx), nil
 }
 
 // Completion returns completion items for the current position.
 func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams) (protocol.CompletionResult, error) {
-	idx := s.store.GetIndex(params.TextDocument.URI)
+	idx := s.mergedIndex(params.TextDocument.URI)
 	items := completion.Provide(idx, s.registry)
 	return items, nil
 }
@@ -144,7 +191,7 @@ func (s *Server) SignatureHelp(_ context.Context, params *protocol.SignatureHelp
 	if !ok {
 		return nil, nil
 	}
-	idx := s.store.GetIndex(params.TextDocument.URI)
+	idx := s.mergedIndex(params.TextDocument.URI)
 	return signature.Provide(content, params.Position, s.registry, idx), nil
 }
 
@@ -160,8 +207,35 @@ func (s *Server) Definition(_ context.Context, params *protocol.DefinitionParams
 	if !ok {
 		return nil, nil
 	}
+	// Try current file first.
 	idx := s.store.GetIndex(params.TextDocument.URI)
-	return definition.Provide(content, params.Position, params.TextDocument.URI, idx), nil
+	result := definition.Provide(content, params.Position, params.TextDocument.URI, idx)
+	if len(result) > 0 {
+		return result, nil
+	}
+	// Search other workspace files.
+	word := wordAt(content, params.Position)
+	if word == "" {
+		return nil, nil
+	}
+	for docURI, fileIdx := range s.store.AllIndices() {
+		if docURI == params.TextDocument.URI {
+			continue
+		}
+		for _, sym := range fileIdx.Lookup(word) {
+			if sym.Kind == symbols.KindFunction || sym.Kind == symbols.KindThread ||
+				sym.Kind == symbols.KindGlobal {
+				return protocol.LocationSlice{{
+					URI: docURI,
+					Range: protocol.Range{
+						Start: protocol.Position{Line: uint32(sym.Pos.Line), Character: uint32(sym.Pos.Column)},
+						End:   protocol.Position{Line: uint32(sym.Pos.Line), Character: uint32(sym.Pos.Column + len(sym.Name))},
+					},
+				}}, nil
+			}
+		}
+	}
+	return nil, nil
 }
 
 // References returns all locations where the symbol at the cursor is used.
@@ -174,11 +248,21 @@ func (s *Server) References(_ context.Context, params *protocol.ReferenceParams)
 	if word == "" {
 		return nil, nil
 	}
-	positions := references.FindAllInSource(content, word)
-	return references.ToLocations(positions, params.TextDocument.URI), nil
+	// Search all workspace files.
+	var allLocs []protocol.Location
+	for _, docURI := range s.store.AllURIs() {
+		src, ok := s.store.Get(docURI)
+		if !ok {
+			continue
+		}
+		positions := references.FindAllInSource(src, word)
+		allLocs = append(allLocs, references.ToLocations(positions, docURI)...)
+	}
+	_ = content // already used for wordAt
+	return allLocs, nil
 }
 
-// Rename renames the symbol at the cursor across the document.
+// Rename renames the symbol at the cursor across all workspace files.
 func (s *Server) Rename(_ context.Context, params *protocol.RenameParams) (*protocol.WorkspaceEdit, error) {
 	content, ok := s.store.Get(params.TextDocument.URI)
 	if !ok {
@@ -188,16 +272,21 @@ func (s *Server) Rename(_ context.Context, params *protocol.RenameParams) (*prot
 	if word == "" {
 		return nil, nil
 	}
-	positions := references.FindAllInSource(content, word)
-	if len(positions) == 0 {
+	changes := make(map[uri.URI][]protocol.TextEdit)
+	for _, docURI := range s.store.AllURIs() {
+		src, ok := s.store.Get(docURI)
+		if !ok {
+			continue
+		}
+		positions := references.FindAllInSource(src, word)
+		if len(positions) > 0 {
+			changes[docURI] = references.ToTextEdits(positions, params.NewName)
+		}
+	}
+	if len(changes) == 0 {
 		return nil, nil
 	}
-	edits := references.ToTextEdits(positions, params.NewName)
-	return &protocol.WorkspaceEdit{
-		Changes: map[uri.URI][]protocol.TextEdit{
-			params.TextDocument.URI: edits,
-		},
-	}, nil
+	return &protocol.WorkspaceEdit{Changes: changes}, nil
 }
 
 // Formatting reformats the entire document.
@@ -207,6 +296,23 @@ func (s *Server) Formatting(_ context.Context, params *protocol.DocumentFormatti
 		return nil, nil
 	}
 	return format.Format(content, params.Options), nil
+}
+
+// mergedIndex returns a symbol index combining the current file's index
+// with indices from all other workspace files.
+func (s *Server) mergedIndex(docURI uri.URI) *symbols.Index {
+	primary := s.store.GetIndex(docURI)
+	allIdx := s.store.AllIndices()
+	var others []*symbols.Index
+	for u, idx := range allIdx {
+		if u != docURI {
+			others = append(others, idx)
+		}
+	}
+	if len(others) == 0 {
+		return primary
+	}
+	return symbols.Merge(primary, others...)
 }
 
 // wordAt extracts the identifier at the given position.
@@ -263,8 +369,9 @@ func (s *Server) publishDiagnostics(ctx context.Context, docURI uri.URI) error {
 		})
 	}
 
-	// Semantic diagnostics (warnings).
-	diags = append(diags, diagnostics.Analyze(prog, idx, s.registry)...)
+	// Semantic diagnostics use merged index so cross-file symbols are known.
+	merged := s.mergedIndex(docURI)
+	diags = append(diags, diagnostics.Analyze(prog, merged, s.registry)...)
 
 	c := s.getClient()
 	if c == nil {
