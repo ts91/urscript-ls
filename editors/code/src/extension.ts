@@ -1,4 +1,6 @@
 import * as vscode from "vscode";
+import * as path from "path";
+import * as fs from "fs";
 import {
   LanguageClient,
   LanguageClientOptions,
@@ -7,9 +9,29 @@ import {
 
 let client: LanguageClient | undefined;
 
-export function activate(context: vscode.ExtensionContext): void {
+function resolveServerPath(context: vscode.ExtensionContext): string {
   const config = vscode.workspace.getConfiguration("urscript");
-  const serverPath = config.get<string>("server.path", "urscript-ls");
+  const configured = config.get<string>("server.path", "");
+
+  // Prefer explicit user configuration.
+  if (configured) {
+    return configured;
+  }
+
+  // Try the bundled binary shipped with the extension.
+  const binaryName =
+    process.platform === "win32" ? "urscript-ls.exe" : "urscript-ls";
+  const bundled = path.join(context.extensionPath, "server", binaryName);
+  if (fs.existsSync(bundled)) {
+    return bundled;
+  }
+
+  // Fall back to PATH.
+  return "urscript-ls";
+}
+
+export function activate(context: vscode.ExtensionContext): void {
+  const serverPath = resolveServerPath(context);
 
   const serverOptions: ServerOptions = {
     run: { command: serverPath },
