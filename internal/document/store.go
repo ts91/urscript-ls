@@ -96,6 +96,17 @@ func (s *Store) AllIndices() map[uri.URI]*symbols.Index {
 	return result
 }
 
+// AllContents returns the content of every document in the store.
+func (s *Store) AllContents() map[uri.URI]string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	result := make(map[uri.URI]string, len(s.docs))
+	for u, e := range s.docs {
+		result[u] = e.content
+	}
+	return result
+}
+
 // AllURIs returns the URIs of all documents in the store.
 func (s *Store) AllURIs() []uri.URI {
 	s.mu.RLock()

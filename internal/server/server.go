@@ -13,6 +13,7 @@ import (
 
 	"github.com/ts91/urscript-ls/internal/builtins"
 	"github.com/ts91/urscript-ls/internal/codeaction"
+	"github.com/ts91/urscript-ls/internal/codelens"
 	"github.com/ts91/urscript-ls/internal/completion"
 	"github.com/ts91/urscript-ls/internal/definition"
 	"github.com/ts91/urscript-ls/internal/diagnostics"
@@ -22,6 +23,8 @@ import (
 	"github.com/ts91/urscript-ls/internal/format"
 	"github.com/ts91/urscript-ls/internal/highlight"
 	"github.com/ts91/urscript-ls/internal/hover"
+	"github.com/ts91/urscript-ls/internal/inlayhint"
+	"github.com/ts91/urscript-ls/internal/ontypeformat"
 	"github.com/ts91/urscript-ls/internal/parser"
 	"github.com/ts91/urscript-ls/internal/references"
 	"github.com/ts91/urscript-ls/internal/selrange"
@@ -98,6 +101,11 @@ func (s *Server) Initialize(_ context.Context, params *protocol.InitializeParams
 			},
 			WorkspaceSymbolProvider:        protocol.Boolean(true),
 			CodeActionProvider:             protocol.Boolean(true),
+			InlayHintProvider:              protocol.Boolean(true),
+			CodeLensProvider:               &protocol.CodeLensOptions{},
+			DocumentOnTypeFormattingProvider: protocol.DocumentOnTypeFormattingOptions{
+				FirstTriggerCharacter: "\n",
+			},
 			CompletionProvider: &protocol.CompletionOptions{
 				TriggerCharacters: []string{"."},
 			},
@@ -318,6 +326,33 @@ func (s *Server) DocumentHighlight(_ context.Context, params *protocol.DocumentH
 func (s *Server) Symbols(_ context.Context, params *protocol.WorkspaceSymbolParams) (protocol.WorkspaceSymbolResult, error) {
 	indices := s.store.AllIndices()
 	return workspacesymbol.Provide(params.Query, indices), nil
+}
+
+// InlayHint returns parameter name hints at call sites.
+func (s *Server) InlayHint(_ context.Context, params *protocol.InlayHintParams) ([]protocol.InlayHint, error) {
+	content, ok := s.store.Get(params.TextDocument.URI)
+	if !ok {
+		return nil, nil
+	}
+	prog, _ := parser.Parse(content)
+	idx := s.mergedIndex(params.TextDocument.URI)
+	return inlayhint.Provide(prog, params.Range, s.registry, idx), nil
+}
+
+// CodeLens returns reference count lenses above function definitions.
+func (s *Server) CodeLens(_ context.Context, params *protocol.CodeLensParams) ([]protocol.CodeLens, error) {
+	idx := s.store.GetIndex(params.TextDocument.URI)
+	allDocs := s.store.AllContents()
+	return codelens.Provide(params.TextDocument.URI, idx, allDocs), nil
+}
+
+// OnTypeFormatting handles auto-indentation on newline.
+func (s *Server) OnTypeFormatting(_ context.Context, params *protocol.DocumentOnTypeFormattingParams) ([]protocol.TextEdit, error) {
+	content, ok := s.store.Get(params.TextDocument.URI)
+	if !ok {
+		return nil, nil
+	}
+	return ontypeformat.Provide(content, params.Position, params.Ch, params.Options), nil
 }
 
 // CodeAction returns quick fixes for diagnostics.
