@@ -27,6 +27,15 @@ func (r *Registry) Lookup(name string) (Builtin, bool) {
 	return b, ok
 }
 
+// All returns all built-in functions.
+func (r *Registry) All() []Builtin {
+	out := make([]Builtin, 0, len(r.funcs))
+	for _, b := range r.funcs {
+		out = append(out, b)
+	}
+	return out
+}
+
 var defaultBuiltins = []Builtin{
 	// Motion
 	{

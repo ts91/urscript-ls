@@ -8,9 +8,11 @@ import (
 	"go.lsp.dev/uri"
 
 	"github.com/ts91/urscript-ls/internal/builtins"
+	"github.com/ts91/urscript-ls/internal/completion"
 	"github.com/ts91/urscript-ls/internal/document"
 	"github.com/ts91/urscript-ls/internal/hover"
 	"github.com/ts91/urscript-ls/internal/parser"
+	"github.com/ts91/urscript-ls/internal/signature"
 	"github.com/ts91/urscript-ls/internal/symbols"
 )
 
@@ -56,6 +58,13 @@ func (s *Server) Initialize(_ context.Context, _ *protocol.InitializeParams) (*p
 				Change:    &syncKind,
 			},
 			HoverProvider: protocol.Boolean(true),
+			CompletionProvider: &protocol.CompletionOptions{
+				TriggerCharacters: []string{"."},
+			},
+			SignatureHelpProvider: &protocol.SignatureHelpOptions{
+				TriggerCharacters:   []string{"(", ","},
+				RetriggerCharacters: []string{","},
+			},
 		},
 		ServerInfo: protocol.ServerInfo{
 			Name:    "urscript-ls",
@@ -108,6 +117,23 @@ func (s *Server) Hover(_ context.Context, params *protocol.HoverParams) (*protoc
 		return nil, nil
 	}
 	return hover.Provide(content, params.Position, s.registry), nil
+}
+
+// Completion returns completion items for the current position.
+func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams) (protocol.CompletionResult, error) {
+	idx := s.store.GetIndex(params.TextDocument.URI)
+	items := completion.Provide(idx, s.registry)
+	return items, nil
+}
+
+// SignatureHelp returns signature information for the function call at the cursor.
+func (s *Server) SignatureHelp(_ context.Context, params *protocol.SignatureHelpParams) (*protocol.SignatureHelp, error) {
+	content, ok := s.store.Get(params.TextDocument.URI)
+	if !ok {
+		return nil, nil
+	}
+	idx := s.store.GetIndex(params.TextDocument.URI)
+	return signature.Provide(content, params.Position, s.registry, idx), nil
 }
 
 // publishDiagnostics parses the document and sends diagnostics to the client.
