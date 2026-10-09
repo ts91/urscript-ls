@@ -18,11 +18,13 @@ import (
 	"github.com/ts91/urscript-ls/internal/docsymbols"
 	"github.com/ts91/urscript-ls/internal/document"
 	"github.com/ts91/urscript-ls/internal/format"
+	"github.com/ts91/urscript-ls/internal/highlight"
 	"github.com/ts91/urscript-ls/internal/hover"
 	"github.com/ts91/urscript-ls/internal/parser"
 	"github.com/ts91/urscript-ls/internal/references"
 	"github.com/ts91/urscript-ls/internal/signature"
 	"github.com/ts91/urscript-ls/internal/symbols"
+	"github.com/ts91/urscript-ls/internal/workspacesymbol"
 )
 
 // Server implements protocol.Server for URScript.
@@ -83,6 +85,8 @@ func (s *Server) Initialize(_ context.Context, params *protocol.InitializeParams
 			ReferencesProvider:             protocol.Boolean(true),
 			RenameProvider:                 protocol.Boolean(true),
 			DocumentFormattingProvider:     protocol.Boolean(true),
+			DocumentHighlightProvider:      protocol.Boolean(true),
+			WorkspaceSymbolProvider:        protocol.Boolean(true),
 			CompletionProvider: &protocol.CompletionOptions{
 				TriggerCharacters: []string{"."},
 			},
@@ -287,6 +291,22 @@ func (s *Server) Rename(_ context.Context, params *protocol.RenameParams) (*prot
 		return nil, nil
 	}
 	return &protocol.WorkspaceEdit{Changes: changes}, nil
+}
+
+// DocumentHighlight highlights all occurrences of the word under cursor.
+func (s *Server) DocumentHighlight(_ context.Context, params *protocol.DocumentHighlightParams) ([]protocol.DocumentHighlight, error) {
+	content, ok := s.store.Get(params.TextDocument.URI)
+	if !ok {
+		return nil, nil
+	}
+	word := wordAt(content, params.Position)
+	return highlight.Provide(content, params.Position, word), nil
+}
+
+// Symbols returns workspace symbols matching a query.
+func (s *Server) Symbols(_ context.Context, params *protocol.WorkspaceSymbolParams) (protocol.WorkspaceSymbolResult, error) {
+	indices := s.store.AllIndices()
+	return workspacesymbol.Provide(params.Query, indices), nil
 }
 
 // Formatting reformats the entire document.
