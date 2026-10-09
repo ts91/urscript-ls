@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"strings"
 	"sync"
 
 	"go.lsp.dev/protocol"
@@ -15,6 +16,7 @@ import (
 	"github.com/ts91/urscript-ls/internal/document"
 	"github.com/ts91/urscript-ls/internal/hover"
 	"github.com/ts91/urscript-ls/internal/parser"
+	"github.com/ts91/urscript-ls/internal/references"
 	"github.com/ts91/urscript-ls/internal/signature"
 	"github.com/ts91/urscript-ls/internal/symbols"
 )
@@ -63,6 +65,8 @@ func (s *Server) Initialize(_ context.Context, _ *protocol.InitializeParams) (*p
 			HoverProvider:          protocol.Boolean(true),
 			DefinitionProvider:     protocol.Boolean(true),
 			DocumentSymbolProvider: protocol.Boolean(true),
+			ReferencesProvider:     protocol.Boolean(true),
+			RenameProvider:         protocol.Boolean(true),
 			CompletionProvider: &protocol.CompletionOptions{
 				TriggerCharacters: []string{"."},
 			},
@@ -156,6 +160,72 @@ func (s *Server) Definition(_ context.Context, params *protocol.DefinitionParams
 	}
 	idx := s.store.GetIndex(params.TextDocument.URI)
 	return definition.Provide(content, params.Position, params.TextDocument.URI, idx), nil
+}
+
+// References returns all locations where the symbol at the cursor is used.
+func (s *Server) References(_ context.Context, params *protocol.ReferenceParams) ([]protocol.Location, error) {
+	content, ok := s.store.Get(params.TextDocument.URI)
+	if !ok {
+		return nil, nil
+	}
+	word := wordAt(content, params.Position)
+	if word == "" {
+		return nil, nil
+	}
+	positions := references.FindAllInSource(content, word)
+	return references.ToLocations(positions, params.TextDocument.URI), nil
+}
+
+// Rename renames the symbol at the cursor across the document.
+func (s *Server) Rename(_ context.Context, params *protocol.RenameParams) (*protocol.WorkspaceEdit, error) {
+	content, ok := s.store.Get(params.TextDocument.URI)
+	if !ok {
+		return nil, nil
+	}
+	word := wordAt(content, params.Position)
+	if word == "" {
+		return nil, nil
+	}
+	positions := references.FindAllInSource(content, word)
+	if len(positions) == 0 {
+		return nil, nil
+	}
+	edits := references.ToTextEdits(positions, params.NewName)
+	return &protocol.WorkspaceEdit{
+		Changes: map[uri.URI][]protocol.TextEdit{
+			params.TextDocument.URI: edits,
+		},
+	}, nil
+}
+
+// wordAt extracts the identifier at the given position.
+func wordAt(content string, pos protocol.Position) string {
+	lines := strings.Split(content, "\n")
+	line := int(pos.Line)
+	col := int(pos.Character)
+	if line >= len(lines) {
+		return ""
+	}
+	text := lines[line]
+	if col >= len(text) {
+		return ""
+	}
+	if !isIdentRune(rune(text[col])) {
+		return ""
+	}
+	start := col
+	for start > 0 && isIdentRune(rune(text[start-1])) {
+		start--
+	}
+	end := col
+	for end < len(text) && isIdentRune(rune(text[end])) {
+		end++
+	}
+	return text[start:end]
+}
+
+func isIdentRune(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_'
 }
 
 // publishDiagnostics parses the document and sends diagnostics to the client.
