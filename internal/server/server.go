@@ -120,7 +120,8 @@ func (s *Server) Hover(_ context.Context, params *protocol.HoverParams) (*protoc
 	if !ok {
 		return nil, nil
 	}
-	return hover.Provide(content, params.Position, s.registry), nil
+	idx := s.store.GetIndex(params.TextDocument.URI)
+	return hover.Provide(content, params.Position, s.registry, idx), nil
 }
 
 // Completion returns completion items for the current position.

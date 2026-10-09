@@ -8,21 +8,38 @@ import (
 	"go.lsp.dev/protocol"
 
 	"github.com/ts91/urscript-ls/internal/builtins"
+	"github.com/ts91/urscript-ls/internal/symbols"
 )
 
 // Provide returns hover information for the word at the given position.
-func Provide(content string, pos protocol.Position, registry *builtins.Registry) *protocol.Hover {
+func Provide(content string, pos protocol.Position, registry *builtins.Registry, idx *symbols.Index) *protocol.Hover {
 	word, wordRange := wordAtPosition(content, pos)
 	if word == "" {
 		return nil
 	}
 
-	b, ok := registry.Lookup(word)
-	if !ok {
+	// Try builtins first.
+	if b, ok := registry.Lookup(word); ok {
+		md := fmt.Sprintf("```urscript\n%s\n```\n\n%s", b.Signature, b.Doc)
+		return &protocol.Hover{
+			Contents: &protocol.MarkupContent{
+				Kind:  protocol.MarkupKindMarkdown,
+				Value: md,
+			},
+			Range: &wordRange,
+		}
+	}
+
+	// Fall back to user-defined symbols.
+	if idx == nil {
+		return nil
+	}
+	syms := idx.Lookup(word)
+	if len(syms) == 0 {
 		return nil
 	}
 
-	md := fmt.Sprintf("```urscript\n%s\n```\n\n%s", b.Signature, b.Doc)
+	md := formatUserSymbol(syms[0])
 	return &protocol.Hover{
 		Contents: &protocol.MarkupContent{
 			Kind:  protocol.MarkupKindMarkdown,
@@ -30,6 +47,30 @@ func Provide(content string, pos protocol.Position, registry *builtins.Registry)
 		},
 		Range: &wordRange,
 	}
+}
+
+func formatUserSymbol(sym symbols.Symbol) string {
+	var parts []string
+
+	switch sym.Kind {
+	case symbols.KindFunction:
+		sig := fmt.Sprintf("def %s(%s)", sym.Name, strings.Join(sym.Params, ", "))
+		parts = append(parts, fmt.Sprintf("```urscript\n%s\n```", sig))
+	case symbols.KindThread:
+		parts = append(parts, fmt.Sprintf("```urscript\nthread %s()\n```", sym.Name))
+	case symbols.KindGlobal:
+		parts = append(parts, fmt.Sprintf("```urscript\nglobal %s\n```", sym.Name))
+	case symbols.KindLocal:
+		parts = append(parts, fmt.Sprintf("```urscript\nlocal %s\n```", sym.Name))
+	default:
+		parts = append(parts, fmt.Sprintf("```urscript\n%s\n```", sym.Name))
+	}
+
+	if sym.Doc != "" {
+		parts = append(parts, sym.Doc)
+	}
+
+	return strings.Join(parts, "\n\n")
 }
 
 // wordAtPosition extracts the identifier-like word at the given position.
