@@ -12,6 +12,7 @@ import (
 	"go.lsp.dev/uri"
 
 	"github.com/ts91/urscript-ls/internal/builtins"
+	"github.com/ts91/urscript-ls/internal/codeaction"
 	"github.com/ts91/urscript-ls/internal/completion"
 	"github.com/ts91/urscript-ls/internal/definition"
 	"github.com/ts91/urscript-ls/internal/diagnostics"
@@ -96,6 +97,7 @@ func (s *Server) Initialize(_ context.Context, params *protocol.InitializeParams
 				Full:   protocol.Boolean(true),
 			},
 			WorkspaceSymbolProvider:        protocol.Boolean(true),
+			CodeActionProvider:             protocol.Boolean(true),
 			CompletionProvider: &protocol.CompletionOptions{
 				TriggerCharacters: []string{"."},
 			},
@@ -316,6 +318,12 @@ func (s *Server) DocumentHighlight(_ context.Context, params *protocol.DocumentH
 func (s *Server) Symbols(_ context.Context, params *protocol.WorkspaceSymbolParams) (protocol.WorkspaceSymbolResult, error) {
 	indices := s.store.AllIndices()
 	return workspacesymbol.Provide(params.Query, indices), nil
+}
+
+// CodeAction returns quick fixes for diagnostics.
+func (s *Server) CodeAction(_ context.Context, params *protocol.CodeActionParams) ([]protocol.CommandOrCodeAction, error) {
+	idx := s.mergedIndex(params.TextDocument.URI)
+	return codeaction.Provide(params, s.registry, idx), nil
 }
 
 // SemanticTokensFull returns semantic tokens for the entire document.
