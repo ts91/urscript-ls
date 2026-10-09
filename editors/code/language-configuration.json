@@ -1,0 +1,31 @@
+{
+    "brackets": [
+        ["[", "]"],
+        ["(", ")"]
+    ],
+    "autoClosingPairs": [
+        ["[", "]"],
+        ["(", ")"],
+        ["\"", "\""],
+        ["'", "'"]
+    ],
+    "surroundingPairs": [
+        ["[", "]"],
+        ["(", ")"],
+        ["\"", "\""],
+        ["'", "'"]
+    ],
+    "folding": {
+        "markers": {
+            "start": "^\\s*(def|thread|while|for|if|elif|else).*:(\\s*|\\s*#.*)$",
+            "end": "^\\s*(end|(elif.+:)|else:)(\\s*|\\s*#.*)$"
+        }
+    },
+    "indentationRules": {
+        "increaseIndentPattern": "^\\s*(def|thread|while|for|if|elif|else).*:(\\s*|\\s*#.*)$",
+        "decreaseIndentPattern": "^\\s*(end|(elif.+:)|else:)(\\s*|\\s*#.*)$"
+    },
+    "comments": {
+        "lineComment": "#"
+    }
+}
