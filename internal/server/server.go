@@ -24,6 +24,7 @@ import (
 	"github.com/ts91/urscript-ls/internal/parser"
 	"github.com/ts91/urscript-ls/internal/references"
 	"github.com/ts91/urscript-ls/internal/selrange"
+	"github.com/ts91/urscript-ls/internal/semtokens"
 	"github.com/ts91/urscript-ls/internal/signature"
 	"github.com/ts91/urscript-ls/internal/symbols"
 	"github.com/ts91/urscript-ls/internal/workspacesymbol"
@@ -90,6 +91,10 @@ func (s *Server) Initialize(_ context.Context, params *protocol.InitializeParams
 			DocumentHighlightProvider:      protocol.Boolean(true),
 			FoldingRangeProvider:           protocol.Boolean(true),
 			SelectionRangeProvider:         protocol.Boolean(true),
+			SemanticTokensProvider: &protocol.SemanticTokensOptions{
+				Legend: semtokens.Legend(),
+				Full:   protocol.Boolean(true),
+			},
 			WorkspaceSymbolProvider:        protocol.Boolean(true),
 			CompletionProvider: &protocol.CompletionOptions{
 				TriggerCharacters: []string{"."},
@@ -311,6 +316,16 @@ func (s *Server) DocumentHighlight(_ context.Context, params *protocol.DocumentH
 func (s *Server) Symbols(_ context.Context, params *protocol.WorkspaceSymbolParams) (protocol.WorkspaceSymbolResult, error) {
 	indices := s.store.AllIndices()
 	return workspacesymbol.Provide(params.Query, indices), nil
+}
+
+// SemanticTokensFull returns semantic tokens for the entire document.
+func (s *Server) SemanticTokensFull(_ context.Context, params *protocol.SemanticTokensParams) (*protocol.SemanticTokens, error) {
+	content, ok := s.store.Get(params.TextDocument.URI)
+	if !ok {
+		return nil, nil
+	}
+	idx := s.mergedIndex(params.TextDocument.URI)
+	return semtokens.Provide(content, s.registry, idx), nil
 }
 
 // SelectionRange returns nested selection ranges for smart expand/shrink.
