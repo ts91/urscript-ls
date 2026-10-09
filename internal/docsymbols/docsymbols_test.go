@@ -11,8 +11,8 @@ import (
 
 func TestProvideEmpty(t *testing.T) {
 	result := Provide(nil)
-	if result != nil {
-		t.Fatalf("expected nil for nil index, got %v", result)
+	if len(result) != 0 {
+		t.Fatalf("expected empty slice for nil index, got %v", result)
 	}
 }
 

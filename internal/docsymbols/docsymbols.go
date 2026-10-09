@@ -12,11 +12,10 @@ import (
 
 // Provide returns the document symbol outline for a file.
 func Provide(idx *symbols.Index) protocol.DocumentSymbolSlice {
+	result := make(protocol.DocumentSymbolSlice, 0)
 	if idx == nil {
-		return nil
+		return result
 	}
-
-	var result protocol.DocumentSymbolSlice
 
 	for _, sym := range idx.Symbols {
 		ds := toDocumentSymbol(sym)
@@ -37,17 +36,24 @@ func toDocumentSymbol(sym symbols.Symbol) *protocol.DocumentSymbol {
 	kind := mapKind(sym)
 	selRange := nameRange(sym.Pos, sym.Name)
 
+	// fullRange must enclose selRange per the LSP spec.
 	fullRange := selRange
 	if sym.EndPos != sym.Pos {
+		startLine := uint32(sym.Pos.Line)
+		startChar := uint32(sym.Pos.Column)
+		endLine := uint32(sym.EndPos.Line)
+		endChar := uint32(sym.EndPos.Column)
+
+		// Ensure the end of fullRange is at least past selRange.End.
+		selEnd := selRange.End
+		if endLine < selEnd.Line || (endLine == selEnd.Line && endChar < selEnd.Character) {
+			endLine = selEnd.Line
+			endChar = selEnd.Character
+		}
+
 		fullRange = protocol.Range{
-			Start: protocol.Position{
-				Line:      uint32(sym.Pos.Line),
-				Character: uint32(sym.Pos.Column),
-			},
-			End: protocol.Position{
-				Line:      uint32(sym.EndPos.Line),
-				Character: uint32(sym.EndPos.Column),
-			},
+			Start: protocol.Position{Line: startLine, Character: startChar},
+			End:   protocol.Position{Line: endLine, Character: endChar},
 		}
 	}
 
