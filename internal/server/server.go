@@ -17,6 +17,7 @@ import (
 	"github.com/ts91/urscript-ls/internal/diagnostics"
 	"github.com/ts91/urscript-ls/internal/docsymbols"
 	"github.com/ts91/urscript-ls/internal/document"
+	"github.com/ts91/urscript-ls/internal/folding"
 	"github.com/ts91/urscript-ls/internal/format"
 	"github.com/ts91/urscript-ls/internal/highlight"
 	"github.com/ts91/urscript-ls/internal/hover"
@@ -86,6 +87,7 @@ func (s *Server) Initialize(_ context.Context, params *protocol.InitializeParams
 			RenameProvider:                 protocol.Boolean(true),
 			DocumentFormattingProvider:     protocol.Boolean(true),
 			DocumentHighlightProvider:      protocol.Boolean(true),
+			FoldingRangeProvider:           protocol.Boolean(true),
 			WorkspaceSymbolProvider:        protocol.Boolean(true),
 			CompletionProvider: &protocol.CompletionOptions{
 				TriggerCharacters: []string{"."},
@@ -307,6 +309,16 @@ func (s *Server) DocumentHighlight(_ context.Context, params *protocol.DocumentH
 func (s *Server) Symbols(_ context.Context, params *protocol.WorkspaceSymbolParams) (protocol.WorkspaceSymbolResult, error) {
 	indices := s.store.AllIndices()
 	return workspacesymbol.Provide(params.Query, indices), nil
+}
+
+// FoldingRanges returns folding ranges for blocks and comment runs.
+func (s *Server) FoldingRanges(_ context.Context, params *protocol.FoldingRangeParams) ([]protocol.FoldingRange, error) {
+	content, ok := s.store.Get(params.TextDocument.URI)
+	if !ok {
+		return nil, nil
+	}
+	prog, _ := parser.Parse(content)
+	return folding.Provide(prog, content), nil
 }
 
 // Formatting reformats the entire document.
