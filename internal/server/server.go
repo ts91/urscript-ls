@@ -10,6 +10,7 @@ import (
 	"github.com/ts91/urscript-ls/internal/builtins"
 	"github.com/ts91/urscript-ls/internal/completion"
 	"github.com/ts91/urscript-ls/internal/definition"
+	"github.com/ts91/urscript-ls/internal/diagnostics"
 	"github.com/ts91/urscript-ls/internal/docsymbols"
 	"github.com/ts91/urscript-ls/internal/document"
 	"github.com/ts91/urscript-ls/internal/hover"
@@ -180,6 +181,9 @@ func (s *Server) publishDiagnostics(ctx context.Context, docURI uri.URI) error {
 			Message:  protocol.String(e.Message),
 		})
 	}
+
+	// Semantic diagnostics (warnings).
+	diags = append(diags, diagnostics.Analyze(prog, idx, s.registry)...)
 
 	c := s.getClient()
 	if c == nil {
