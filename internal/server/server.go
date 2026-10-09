@@ -9,6 +9,8 @@ import (
 
 	"github.com/ts91/urscript-ls/internal/builtins"
 	"github.com/ts91/urscript-ls/internal/completion"
+	"github.com/ts91/urscript-ls/internal/definition"
+	"github.com/ts91/urscript-ls/internal/docsymbols"
 	"github.com/ts91/urscript-ls/internal/document"
 	"github.com/ts91/urscript-ls/internal/hover"
 	"github.com/ts91/urscript-ls/internal/parser"
@@ -57,7 +59,9 @@ func (s *Server) Initialize(_ context.Context, _ *protocol.InitializeParams) (*p
 				OpenClose: &openClose,
 				Change:    &syncKind,
 			},
-			HoverProvider: protocol.Boolean(true),
+			HoverProvider:          protocol.Boolean(true),
+			DefinitionProvider:     protocol.Boolean(true),
+			DocumentSymbolProvider: protocol.Boolean(true),
 			CompletionProvider: &protocol.CompletionOptions{
 				TriggerCharacters: []string{"."},
 			},
@@ -134,6 +138,22 @@ func (s *Server) SignatureHelp(_ context.Context, params *protocol.SignatureHelp
 	}
 	idx := s.store.GetIndex(params.TextDocument.URI)
 	return signature.Provide(content, params.Position, s.registry, idx), nil
+}
+
+// DocumentSymbol returns the symbol outline for a document.
+func (s *Server) DocumentSymbol(_ context.Context, params *protocol.DocumentSymbolParams) (protocol.DocumentSymbolResult, error) {
+	idx := s.store.GetIndex(params.TextDocument.URI)
+	return docsymbols.Provide(idx), nil
+}
+
+// Definition returns the definition location for the symbol at the cursor.
+func (s *Server) Definition(_ context.Context, params *protocol.DefinitionParams) (protocol.DefinitionResult, error) {
+	content, ok := s.store.Get(params.TextDocument.URI)
+	if !ok {
+		return nil, nil
+	}
+	idx := s.store.GetIndex(params.TextDocument.URI)
+	return definition.Provide(content, params.Position, params.TextDocument.URI, idx), nil
 }
 
 // publishDiagnostics parses the document and sends diagnostics to the client.
