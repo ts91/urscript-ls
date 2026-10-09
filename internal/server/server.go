@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
 
+	"github.com/ts91/urscript-ls/internal/callhierarchy"
 	"github.com/ts91/urscript-ls/internal/builtins"
 	"github.com/ts91/urscript-ls/internal/codeaction"
 	"github.com/ts91/urscript-ls/internal/codelens"
@@ -101,6 +103,7 @@ func (s *Server) Initialize(_ context.Context, params *protocol.InitializeParams
 			},
 			WorkspaceSymbolProvider:        protocol.Boolean(true),
 			CodeActionProvider:             protocol.Boolean(true),
+			CallHierarchyProvider:          protocol.Boolean(true),
 			InlayHintProvider:              protocol.Boolean(true),
 			CodeLensProvider:               &protocol.CodeLensOptions{},
 			DocumentOnTypeFormattingProvider: protocol.DocumentOnTypeFormattingOptions{
@@ -122,8 +125,27 @@ func (s *Server) Initialize(_ context.Context, params *protocol.InitializeParams
 }
 
 // Initialized is called after the client confirms initialization.
-func (s *Server) Initialized(_ context.Context, _ *protocol.InitializedParams) error {
+func (s *Server) Initialized(ctx context.Context, _ *protocol.InitializedParams) error {
 	go s.scanWorkspace()
+
+	// Register file watcher for workspace .script/.urscript/.variables files.
+	c := s.getClient()
+	if c != nil {
+		opts := protocol.DidChangeWatchedFilesRegistrationOptions{
+			Watchers: []protocol.FileSystemWatcher{{
+				GlobPattern: protocol.Pattern("**/*.{script,urscript,variables}"),
+			}},
+		}
+		optsJSON, _ := json.Marshal(opts)
+		_ = c.RegisterCapability(ctx, &protocol.RegistrationParams{
+			Registrations: []protocol.Registration{{
+				ID:              "urscript-file-watcher",
+				Method:          "workspace/didChangeWatchedFiles",
+				RegisterOptions: optsJSON,
+			}},
+		})
+	}
+
 	return nil
 }
 
@@ -175,14 +197,42 @@ func (s *Server) DidOpen(ctx context.Context, params *protocol.DidOpenTextDocume
 	return s.publishDiagnostics(ctx, params.TextDocument.URI)
 }
 
-// DidChange handles text document changes (full sync).
+// DidChange handles text document changes (full or incremental sync).
 func (s *Server) DidChange(ctx context.Context, params *protocol.DidChangeTextDocumentParams) error {
 	for _, change := range params.ContentChanges {
-		if whole, ok := change.(*protocol.TextDocumentContentChangeWholeDocument); ok {
-			s.store.Update(params.TextDocument.URI, whole.Text)
+		switch c := change.(type) {
+		case *protocol.TextDocumentContentChangeWholeDocument:
+			s.store.Update(params.TextDocument.URI, c.Text)
+		case *protocol.TextDocumentContentChangePartial:
+			content, ok := s.store.Get(params.TextDocument.URI)
+			if !ok {
+				continue
+			}
+			content = applyEdit(content, c.Range, c.Text)
+			s.store.Update(params.TextDocument.URI, content)
 		}
 	}
 	return s.publishDiagnostics(ctx, params.TextDocument.URI)
+}
+
+// applyEdit applies a range edit to the content string.
+func applyEdit(content string, rng protocol.Range, newText string) string {
+	lines := strings.Split(content, "\n")
+	startOff := lineColToOffset(lines, int(rng.Start.Line), int(rng.Start.Character))
+	endOff := lineColToOffset(lines, int(rng.End.Line), int(rng.End.Character))
+	if startOff < 0 || endOff < 0 || startOff > endOff || endOff > len(content) {
+		return content
+	}
+	return content[:startOff] + newText + content[endOff:]
+}
+
+func lineColToOffset(lines []string, line, col int) int {
+	offset := 0
+	for i := 0; i < line && i < len(lines); i++ {
+		offset += len(lines[i]) + 1 // +1 for newline
+	}
+	offset += col
+	return offset
 }
 
 // DidClose handles closing a text document.
@@ -326,6 +376,51 @@ func (s *Server) DocumentHighlight(_ context.Context, params *protocol.DocumentH
 func (s *Server) Symbols(_ context.Context, params *protocol.WorkspaceSymbolParams) (protocol.WorkspaceSymbolResult, error) {
 	indices := s.store.AllIndices()
 	return workspacesymbol.Provide(params.Query, indices), nil
+}
+
+// PrepareCallHierarchy returns call hierarchy items for the symbol at cursor.
+func (s *Server) PrepareCallHierarchy(_ context.Context, params *protocol.CallHierarchyPrepareParams) ([]protocol.CallHierarchyItem, error) {
+	content, ok := s.store.Get(params.TextDocument.URI)
+	if !ok {
+		return nil, nil
+	}
+	idx := s.mergedIndex(params.TextDocument.URI)
+	return callhierarchy.Prepare(content, params.Position, params.TextDocument.URI, idx), nil
+}
+
+// IncomingCalls returns functions that call the given item.
+func (s *Server) IncomingCalls(_ context.Context, params *protocol.CallHierarchyIncomingCallsParams) ([]protocol.CallHierarchyIncomingCall, error) {
+	allDocs := s.store.AllContents()
+	allIdx := s.store.AllIndices()
+	return callhierarchy.IncomingCalls(params.Item, allDocs, allIdx), nil
+}
+
+// OutgoingCalls returns functions called from the given item.
+func (s *Server) OutgoingCalls(_ context.Context, params *protocol.CallHierarchyOutgoingCallsParams) ([]protocol.CallHierarchyOutgoingCall, error) {
+	allIdx := s.store.AllIndices()
+	return callhierarchy.OutgoingCalls(params.Item, allIdx), nil
+}
+
+// DidChangeWatchedFiles re-indexes files that changed on disk.
+func (s *Server) DidChangeWatchedFiles(ctx context.Context, params *protocol.DidChangeWatchedFilesParams) error {
+	for _, event := range params.Changes {
+		switch event.Type {
+		case protocol.FileChangeTypeCreated, protocol.FileChangeTypeChanged:
+			path := event.URI.Path()
+			data, err := os.ReadFile(path)
+			if err != nil {
+				continue
+			}
+			content := string(data)
+			s.store.Update(event.URI, content)
+			prog, _ := parser.Parse(content)
+			idx := symbols.Build(prog, content)
+			s.store.SetIndex(event.URI, idx)
+		case protocol.FileChangeTypeDeleted:
+			s.store.Close(event.URI)
+		}
+	}
+	return nil
 }
 
 // InlayHint returns parameter name hints at call sites.
