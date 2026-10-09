@@ -198,6 +198,11 @@ type LocalStmt struct {
 
 func (l *LocalStmt) nodePos() Pos { return l.Pos }
 
+// NodePos returns the position of any AST node.
+func NodePos(n Node) Pos {
+	return n.nodePos()
+}
+
 // ParseError records a single parse error with position.
 type ParseError struct {
 	Line    int

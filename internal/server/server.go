@@ -11,6 +11,7 @@ import (
 	"github.com/ts91/urscript-ls/internal/document"
 	"github.com/ts91/urscript-ls/internal/hover"
 	"github.com/ts91/urscript-ls/internal/parser"
+	"github.com/ts91/urscript-ls/internal/symbols"
 )
 
 // Server implements protocol.Server for URScript.
@@ -116,7 +117,10 @@ func (s *Server) publishDiagnostics(ctx context.Context, docURI uri.URI) error {
 		return nil
 	}
 
-	_, errs := parser.Parse(content)
+	prog, errs := parser.Parse(content)
+	idx := symbols.Build(prog, content)
+	s.store.SetIndex(docURI, idx)
+
 	diags := make([]protocol.Diagnostic, 0, len(errs))
 	for _, e := range errs {
 		diags = append(diags, protocol.Diagnostic{
