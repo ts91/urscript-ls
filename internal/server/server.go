@@ -23,6 +23,7 @@ import (
 	"github.com/ts91/urscript-ls/internal/hover"
 	"github.com/ts91/urscript-ls/internal/parser"
 	"github.com/ts91/urscript-ls/internal/references"
+	"github.com/ts91/urscript-ls/internal/selrange"
 	"github.com/ts91/urscript-ls/internal/signature"
 	"github.com/ts91/urscript-ls/internal/symbols"
 	"github.com/ts91/urscript-ls/internal/workspacesymbol"
@@ -88,6 +89,7 @@ func (s *Server) Initialize(_ context.Context, params *protocol.InitializeParams
 			DocumentFormattingProvider:     protocol.Boolean(true),
 			DocumentHighlightProvider:      protocol.Boolean(true),
 			FoldingRangeProvider:           protocol.Boolean(true),
+			SelectionRangeProvider:         protocol.Boolean(true),
 			WorkspaceSymbolProvider:        protocol.Boolean(true),
 			CompletionProvider: &protocol.CompletionOptions{
 				TriggerCharacters: []string{"."},
@@ -309,6 +311,16 @@ func (s *Server) DocumentHighlight(_ context.Context, params *protocol.DocumentH
 func (s *Server) Symbols(_ context.Context, params *protocol.WorkspaceSymbolParams) (protocol.WorkspaceSymbolResult, error) {
 	indices := s.store.AllIndices()
 	return workspacesymbol.Provide(params.Query, indices), nil
+}
+
+// SelectionRange returns nested selection ranges for smart expand/shrink.
+func (s *Server) SelectionRange(_ context.Context, params *protocol.SelectionRangeParams) ([]protocol.SelectionRange, error) {
+	content, ok := s.store.Get(params.TextDocument.URI)
+	if !ok {
+		return nil, nil
+	}
+	prog, _ := parser.Parse(content)
+	return selrange.Provide(prog, content, params.Positions), nil
 }
 
 // FoldingRanges returns folding ranges for blocks and comment runs.
