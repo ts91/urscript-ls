@@ -11,11 +11,15 @@ let client: LanguageClient | undefined;
 
 function resolveServerPath(context: vscode.ExtensionContext): string {
   const config = vscode.workspace.getConfiguration("urscript");
-  const configured = config.get<string>("server.path", "");
+  const inspection = config.inspect<string>("server.path");
 
-  // Prefer explicit user configuration.
-  if (configured) {
-    return configured;
+  // Prefer explicit user configuration (only if actually set, not the default).
+  const explicit =
+    inspection?.workspaceFolderValue ??
+    inspection?.workspaceValue ??
+    inspection?.globalValue;
+  if (explicit) {
+    return explicit;
   }
 
   // Try the bundled binary shipped with the extension.
