@@ -103,10 +103,6 @@ jobs:
         working-directory: editors/code
         run: npm ci
 
-      - name: Compile extension
-        working-directory: editors/code
-        run: npm run compile
-
       - name: Package platform-specific extensions
         working-directory: editors/code
         run: |
