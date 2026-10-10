@@ -1,6 +1,8 @@
 package semtokens
 
 import (
+	"strings"
+
 	"go.lsp.dev/protocol"
 
 	"github.com/ts91/urscript-ls/internal/builtins"
@@ -22,9 +24,10 @@ const (
 
 // Token modifier bit flags — must match Legend() order.
 const (
-	tmDeclaration  = 1 << 0
-	tmDefinition   = 1 << 1
-	tmDefaultLib   = 1 << 2
+	tmDeclaration    = 1 << 0
+	tmDefinition     = 1 << 1
+	tmDefaultLib     = 1 << 2
+	tmDocumentation  = 1 << 3
 )
 
 // Legend returns the semantic tokens legend to register with the client.
@@ -44,6 +47,7 @@ func Legend() protocol.SemanticTokensLegend {
 			"declaration",
 			"definition",
 			"defaultLibrary",
+			"documentation",
 		},
 	}
 }
@@ -69,6 +73,7 @@ func Provide(source string, registry *builtins.Registry, idx *symbols.Index) *pr
 	var data []uint32
 	prevLine := 0
 	prevCol := 0
+	inDocBlock := false
 
 	for _, tok := range tokens {
 		tokenType := -1
@@ -95,6 +100,13 @@ func Provide(source string, registry *builtins.Registry, idx *symbols.Index) *pr
 
 		case parser.TokenComment:
 			tokenType = ttComment
+			trimmed := strings.TrimSpace(tok.Value)
+			if trimmed == "###" {
+				inDocBlock = !inDocBlock
+				modifiers = tmDocumentation
+			} else if inDocBlock {
+				modifiers = tmDocumentation
+			}
 
 		case parser.TokenString:
 			tokenType = ttString

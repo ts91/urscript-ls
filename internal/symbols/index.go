@@ -183,13 +183,72 @@ func (b *builder) walkNode(n parser.Node) {
 	}
 }
 
-// extractDoc collects contiguous # comment lines immediately above defLine.
+// extractDoc collects documentation above defLine.
+// It first checks for a ### block docstring, then falls back to
+// contiguous # line comments.
 func extractDoc(source string, defLine int) string {
 	lines := splitLines(source)
 	if defLine <= 0 || defLine > len(lines) {
 		return ""
 	}
 
+	// Try ### block docstring first.
+	if doc := extractBlockDoc(lines, defLine); doc != "" {
+		return doc
+	}
+
+	// Fall back to contiguous # line comments.
+	return extractLineDoc(lines, defLine)
+}
+
+// extractBlockDoc looks for a ### ... ### block immediately above defLine.
+func extractBlockDoc(lines []string, defLine int) string {
+	// Find the closing ### (walking up, skipping blank lines).
+	closeIdx := -1
+	for i := defLine - 1; i >= 0; i-- {
+		trimmed := trimSpace(lines[i])
+		if len(trimmed) == 0 {
+			continue
+		}
+		if trimmed == "###" {
+			closeIdx = i
+		}
+		break
+	}
+	if closeIdx < 0 {
+		return ""
+	}
+
+	// Find the matching opening ###.
+	openIdx := -1
+	for i := closeIdx - 1; i >= 0; i-- {
+		if trimSpace(lines[i]) == "###" {
+			openIdx = i
+			break
+		}
+	}
+	if openIdx < 0 {
+		return ""
+	}
+
+	// Collect the content between the delimiters.
+	var docLines []string
+	for i := openIdx + 1; i < closeIdx; i++ {
+		docLines = append(docLines, trimSpace(lines[i]))
+	}
+
+	result := ""
+	for i, line := range docLines {
+		if i > 0 {
+			result += "\n"
+		}
+		result += line
+	}
+	return result
+}
+
+// extractLineDoc collects contiguous # comment lines above defLine.
+func extractLineDoc(lines []string, defLine int) string {
 	var docLines []string
 	for i := defLine - 1; i >= 0; i-- {
 		trimmed := trimSpace(lines[i])
