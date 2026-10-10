@@ -98,6 +98,9 @@ func processCall(call *parser.CallExpr, rng protocol.Range, registry *builtins.R
 		if i >= len(params) {
 			break
 		}
+		if arg == nil {
+			continue
+		}
 		// Skip keyword arguments — they already show the name.
 		if isKeywordArg(arg) {
 			continue

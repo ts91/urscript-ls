@@ -32,6 +32,10 @@ func toDocumentSymbol(sym symbols.Symbol) *protocol.DocumentSymbol {
 	if sym.Kind == symbols.KindParam {
 		return nil
 	}
+	// Skip symbols with empty names (e.g. from incomplete parse).
+	if sym.Name == "" {
+		return nil
+	}
 
 	kind := mapKind(sym)
 	selRange := nameRange(sym.Pos, sym.Name)
