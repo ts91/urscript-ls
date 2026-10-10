@@ -6,6 +6,7 @@ Demonstrates language features for LSP testing.
 global speed_factor = 1.0
 
 ###
+Move the robot to a waypoint using linear motion.
 @param waypoint pose The target position
 @param speed float Movement speed scaling
 @returns bool True if the position was reached
