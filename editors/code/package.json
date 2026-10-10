@@ -3,7 +3,7 @@
   "displayName": "URScript",
   "description": "URScript language support powered by urscript-ls",
   "version": "0.1.0",
-  "publisher": "thor",
+  "publisher": "ts91",
   "license": "MIT",
   "repository": {
     "type": "git",
