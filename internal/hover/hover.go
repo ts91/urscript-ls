@@ -20,7 +20,7 @@ func Provide(content string, pos protocol.Position, registry *builtins.Registry,
 
 	// Try builtins first.
 	if b, ok := registry.Lookup(word); ok {
-		md := fmt.Sprintf("```urscript\n%s\n```\n\n%s", b.Signature, b.Doc)
+		md := fmt.Sprintf("```urscript\n%s\n```\n\n%s", b.Signature, formatDoc(b.Doc))
 		return &protocol.Hover{
 			Contents: &protocol.MarkupContent{
 				Kind:  protocol.MarkupKindMarkdown,

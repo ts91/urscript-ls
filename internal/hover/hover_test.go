@@ -76,6 +76,24 @@ movej(q, v=speed)`
 	}
 }
 
+func TestHoverBuiltinFormatsParams(t *testing.T) {
+	src := "movej(q1)"
+	reg := builtins.NewRegistry()
+	pos := protocol.Position{Line: 0, Character: 2}
+
+	result := Provide(src, pos, reg, nil)
+	if result == nil {
+		t.Fatal("expected hover result for builtin")
+	}
+	mc := result.Contents.(*protocol.MarkupContent)
+	if !strings.Contains(mc.Value, "**@param**") {
+		t.Errorf("expected formatted @param in builtin hover, got: %s", mc.Value)
+	}
+	if !strings.Contains(mc.Value, "`q`") {
+		t.Errorf("expected backtick-wrapped param name in builtin hover, got: %s", mc.Value)
+	}
+}
+
 func TestHoverUnknown(t *testing.T) {
 	src := "unknown_thing"
 	reg := builtins.NewRegistry()
