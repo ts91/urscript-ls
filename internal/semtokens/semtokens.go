@@ -1,6 +1,8 @@
 package semtokens
 
 import (
+	"strings"
+
 	"go.lsp.dev/protocol"
 
 	"github.com/ts91/urscript-ls/internal/builtins"
@@ -18,6 +20,8 @@ const (
 	ttString    = 5
 	ttNumber    = 6
 	ttOperator  = 7
+	ttDecorator = 8
+	ttType      = 9
 )
 
 // Token modifier bit flags — must match Legend() order.
@@ -40,6 +44,8 @@ func Legend() protocol.SemanticTokensLegend {
 			"string",
 			"number",
 			"operator",
+			"decorator",
+			"type",
 		},
 		TokenModifiers: []string{
 			"declaration",
@@ -99,8 +105,9 @@ func Provide(source string, registry *builtins.Registry, idx *symbols.Index) *pr
 			tokenType = ttComment
 
 		case parser.TokenDocComment:
-			tokenType = ttComment
-			modifiers = tmDocumentation
+			// Emit granular tokens for doc block lines.
+			emitDocTokens(tok, &data, &prevLine, &prevCol)
+			continue
 
 		case parser.TokenString:
 			tokenType = ttString
@@ -135,5 +142,100 @@ func Provide(source string, registry *builtins.Registry, idx *symbols.Index) *pr
 
 	return &protocol.SemanticTokens{
 		Data: data,
+	}
+}
+
+// emitDocTokens produces granular semantic tokens for a doc comment line.
+// It parses @param and @returns tags into separate tokens.
+func emitDocTokens(tok parser.Token, data *[]uint32, prevLine, prevCol *int) {
+	trimmed := strings.TrimSpace(tok.Value)
+	line := tok.Line
+	col := tok.Column
+
+	emit := func(l, c, length, tokenType int, modifiers uint32) {
+		deltaLine := l - *prevLine
+		deltaCol := c
+		if deltaLine == 0 {
+			deltaCol = c - *prevCol
+		}
+		*data = append(*data, uint32(deltaLine), uint32(deltaCol), uint32(length), uint32(tokenType), modifiers)
+		*prevLine = l
+		*prevCol = c
+	}
+
+	// ### delimiter lines
+	if trimmed == "###" {
+		emit(line, col, len(tok.Value), ttComment, tmDocumentation)
+		return
+	}
+
+	// Find where the content starts (skip leading whitespace).
+	contentStart := col
+	for i := 0; i < len(tok.Value); i++ {
+		if tok.Value[i] != ' ' && tok.Value[i] != '\t' {
+			contentStart = col + i
+			break
+		}
+	}
+	content := strings.TrimSpace(tok.Value)
+
+	if strings.HasPrefix(content, "@param ") || strings.HasPrefix(content, "@returns ") {
+		fields := strings.Fields(content)
+		pos := contentStart
+
+		if fields[0] == "@param" {
+			// @param
+			emit(line, pos, len("@param"), ttDecorator, tmDocumentation)
+			pos += len("@param")
+
+			if len(fields) >= 2 {
+				// parameter name
+				nameIdx := strings.Index(content[len("@param"):], fields[1])
+				pos = contentStart + len("@param") + nameIdx
+				emit(line, pos, len(fields[1]), ttParameter, tmDocumentation)
+				pos += len(fields[1])
+
+				if len(fields) >= 3 {
+					// type
+					typeIdx := strings.Index(content[pos-contentStart:], fields[2])
+					pos = contentStart + (pos - contentStart) + typeIdx
+					emit(line, pos, len(fields[2]), ttType, tmDocumentation)
+					pos += len(fields[2])
+
+					// remaining description
+					if len(fields) >= 4 {
+						descStart := strings.Index(content, fields[3])
+						if descStart >= 0 {
+							descLen := len(content) - descStart
+							emit(line, contentStart+descStart, descLen, ttComment, tmDocumentation)
+						}
+					}
+				}
+			}
+		} else {
+			// @returns
+			emit(line, pos, len("@returns"), ttDecorator, tmDocumentation)
+			pos += len("@returns")
+
+			if len(fields) >= 2 {
+				// type
+				typeIdx := strings.Index(content[len("@returns"):], fields[1])
+				pos = contentStart + len("@returns") + typeIdx
+				emit(line, pos, len(fields[1]), ttType, tmDocumentation)
+				pos += len(fields[1])
+
+				// remaining description
+				if len(fields) >= 3 {
+					descStart := strings.Index(content, fields[2])
+					if descStart >= 0 {
+						descLen := len(content) - descStart
+						emit(line, contentStart+descStart, descLen, ttComment, tmDocumentation)
+					}
+				}
+			}
+		}
+	} else {
+		// Plain doc text
+		emit(line, col, len(tok.Value), ttComment, tmDocumentation)
 	}
 }

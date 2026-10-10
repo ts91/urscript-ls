@@ -67,7 +67,7 @@ func formatUserSymbol(sym symbols.Symbol) string {
 	}
 
 	if sym.Doc != "" {
-		parts = append(parts, escapeDoc(sym.Doc))
+		parts = append(parts, formatDoc(sym.Doc))
 	}
 
 	return strings.Join(parts, "\n\n")
@@ -112,13 +112,33 @@ func isIdentChar(r rune) bool {
 	return r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r)
 }
 
-// escapeDoc prevents doc content from being rendered as Markdown headings.
-func escapeDoc(doc string) string {
+// formatDoc converts raw docstring content into readable Markdown.
+func formatDoc(doc string) string {
 	lines := strings.Split(doc, "\n")
-	for i, line := range lines {
-		if strings.HasPrefix(line, "#") {
-			lines[i] = `\` + line
+	var out []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "@param ") {
+			parts := strings.Fields(trimmed)
+			// @param name type description...
+			if len(parts) >= 3 {
+				desc := strings.Join(parts[3:], " ")
+				out = append(out, fmt.Sprintf("**@param** `%s` *%s* %s", parts[1], parts[2], desc))
+			} else if len(parts) == 2 {
+				out = append(out, fmt.Sprintf("**@param** `%s`", parts[1]))
+			}
+		} else if strings.HasPrefix(trimmed, "@returns ") {
+			parts := strings.Fields(trimmed)
+			// @returns type description...
+			if len(parts) >= 2 {
+				desc := strings.Join(parts[2:], " ")
+				out = append(out, fmt.Sprintf("**@returns** *%s* %s", parts[1], desc))
+			}
+		} else if strings.HasPrefix(trimmed, "#") {
+			out = append(out, `\`+trimmed)
+		} else {
+			out = append(out, trimmed)
 		}
 	}
-	return strings.Join(lines, "\n")
+	return strings.Join(out, "  \n")
 }
