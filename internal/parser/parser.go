@@ -59,7 +59,7 @@ func (p *parser) errorf(tok Token, format string, args ...any) {
 }
 
 func (p *parser) skipNewlines() {
-	for p.cur().Type == TokenNewline || p.cur().Type == TokenComment {
+	for p.cur().Type == TokenNewline || p.cur().Type == TokenComment || p.cur().Type == TokenDocComment {
 		p.advance()
 	}
 }

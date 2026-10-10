@@ -1,8 +1,6 @@
 package semtokens
 
 import (
-	"strings"
-
 	"go.lsp.dev/protocol"
 
 	"github.com/ts91/urscript-ls/internal/builtins"
@@ -73,7 +71,6 @@ func Provide(source string, registry *builtins.Registry, idx *symbols.Index) *pr
 	var data []uint32
 	prevLine := 0
 	prevCol := 0
-	inDocBlock := false
 
 	for _, tok := range tokens {
 		tokenType := -1
@@ -100,13 +97,10 @@ func Provide(source string, registry *builtins.Registry, idx *symbols.Index) *pr
 
 		case parser.TokenComment:
 			tokenType = ttComment
-			trimmed := strings.TrimSpace(tok.Value)
-			if trimmed == "###" {
-				inDocBlock = !inDocBlock
-				modifiers = tmDocumentation
-			} else if inDocBlock {
-				modifiers = tmDocumentation
-			}
+
+		case parser.TokenDocComment:
+			tokenType = ttComment
+			modifiers = tmDocumentation
 
 		case parser.TokenString:
 			tokenType = ttString

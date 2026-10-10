@@ -258,6 +258,10 @@ func extractLineDoc(lines []string, defLine int) string {
 		if trimmed[0] != '#' {
 			break
 		}
+		// Stop at ### block delimiters.
+		if trimmed == "###" {
+			break
+		}
 		// Strip leading "# " or "#"
 		comment := trimmed[1:]
 		if len(comment) > 0 && comment[0] == ' ' {

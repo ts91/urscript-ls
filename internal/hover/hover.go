@@ -67,7 +67,7 @@ func formatUserSymbol(sym symbols.Symbol) string {
 	}
 
 	if sym.Doc != "" {
-		parts = append(parts, sym.Doc)
+		parts = append(parts, escapeDoc(sym.Doc))
 	}
 
 	return strings.Join(parts, "\n\n")
@@ -110,4 +110,15 @@ func wordAtPosition(content string, pos protocol.Position) (string, protocol.Ran
 
 func isIdentChar(r rune) bool {
 	return r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r)
+}
+
+// escapeDoc prevents doc content from being rendered as Markdown headings.
+func escapeDoc(doc string) string {
+	lines := strings.Split(doc, "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, "#") {
+			lines[i] = `\` + line
+		}
+	}
+	return strings.Join(lines, "\n")
 }

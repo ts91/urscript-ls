@@ -60,8 +60,9 @@ const (
 	TokenColon    // :
 	TokenDot      // .
 
-	// Comment
+	// Comments
 	TokenComment
+	TokenDocComment // line inside a ### block
 )
 
 var keywords = map[string]TokenType{
@@ -250,12 +251,61 @@ func (l *Lexer) lexComment() {
 		l.pos++
 		l.col++
 	}
+	text := l.input[start:l.pos]
+
+	// Check if this is a ### doc block delimiter.
+	if strings.TrimSpace(text) == "###" {
+		l.tokens = append(l.tokens, Token{
+			Type:   TokenDocComment,
+			Value:  text,
+			Line:   l.line,
+			Column: startCol,
+		})
+		l.lexDocBlock()
+		return
+	}
+
 	l.tokens = append(l.tokens, Token{
 		Type:   TokenComment,
-		Value:  l.input[start:l.pos],
+		Value:  text,
 		Line:   l.line,
 		Column: startCol,
 	})
+}
+
+// lexDocBlock consumes lines after an opening ### until a closing ### is found,
+// emitting each line as a TokenDocComment.
+func (l *Lexer) lexDocBlock() {
+	for l.pos < len(l.input) {
+		// Skip the newline after the previous line.
+		if l.input[l.pos] == '\n' {
+			l.pos++
+			l.line++
+			l.col = 0
+		}
+
+		// Capture the current line.
+		lineStart := l.pos
+		lineCol := l.col
+		lineLine := l.line
+		for l.pos < len(l.input) && l.input[l.pos] != '\n' {
+			l.pos++
+			l.col++
+		}
+		text := l.input[lineStart:l.pos]
+
+		l.tokens = append(l.tokens, Token{
+			Type:   TokenDocComment,
+			Value:  text,
+			Line:   lineLine,
+			Column: lineCol,
+		})
+
+		// If this line is the closing ###, stop.
+		if strings.TrimSpace(text) == "###" {
+			return
+		}
+	}
 }
 
 func (l *Lexer) lexString() {
