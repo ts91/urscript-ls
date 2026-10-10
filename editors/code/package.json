@@ -1,10 +1,11 @@
 {
   "name": "urscript",
   "displayName": "URScript",
-  "description": "URScript language support powered by urscript-ls",
+  "description": "URScript language support with full LSP features",
   "version": "0.1.0",
   "publisher": "ts91",
   "license": "MIT",
+  "icon": "icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/ts91/urscript-ls"
@@ -16,6 +17,17 @@
     "Programming Languages",
     "Snippets"
   ],
+  "keywords": [
+    "urscript",
+    "universal robots",
+    "robotics",
+    "ur",
+    "cobot"
+  ],
+  "galleryBanner": {
+    "color": "#56a2d6",
+    "theme": "dark"
+  },
   "activationEvents": [
     "onLanguage:urscript"
   ],
