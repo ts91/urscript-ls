@@ -1,0 +1,4 @@
+gripper_open = 0.08
+gripper_closed = 0.0
+max_speed = 1.5
+safe_height = 0.15

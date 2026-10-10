@@ -1,0 +1,41 @@
+###
+Utility functions shared across programs.
+###
+
+global default_force = 10.0
+
+###
+@param base pose The base pose to offset from
+@param dx float X offset in meters
+@param dy float Y offset in meters
+@param dz float Z offset in meters
+@returns pose The resulting pose
+###
+def compute_offset(base, dx, dy, dz):
+  return pose_add(base, p[dx, dy, dz, 0, 0, 0])
+end
+
+# Wait until the gripper reports a stable grip.
+def wait_for_gripper(force):
+  local timeout = 3.0
+  local elapsed = 0.0
+  while elapsed < timeout:
+    if get_digital_in(0) == True:
+      return True
+    end
+    sleep(0.05)
+    elapsed = elapsed + 0.05
+  end
+  textmsg("gripper timeout")
+  return False
+end
+
+# Clamp a value between lo and hi.
+def clamp(val, lo, hi):
+  if val < lo:
+    return lo
+  elif val > hi:
+    return hi
+  end
+  return val
+end

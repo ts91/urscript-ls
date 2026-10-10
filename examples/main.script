@@ -1,0 +1,69 @@
+###
+Pick-and-place example program.
+Demonstrates language features for LSP testing.
+###
+
+global speed_factor = 1.0
+
+###
+@param waypoint pose The target position
+@param speed float Movement speed scaling
+@returns bool True if the position was reached
+###
+def move_to(waypoint, speed):
+  local v = 0.25 * speed
+  movel(waypoint, a=1.2, v=v)
+  return True
+end
+
+# Monitor thread that logs joint positions.
+thread monitor():
+  while True:
+    q = get_actual_joint_positions()
+    textmsg("joints: ", q)
+    sleep(0.5)
+  end
+end
+
+def pick(target_pose, grip_force):
+  move_to(target_pose, speed_factor)
+  sleep(0.1)
+  set_digital_out(0, True)
+  wait_for_gripper(grip_force)
+end
+
+def place(target_pose):
+  move_to(target_pose, speed_factor)
+  sleep(0.1)
+  set_digital_out(0, False)
+end
+
+# Main program
+def main():
+  home = p[0, -1.5708, 0, -1.5708, 0, 0]
+  pick_pose = compute_offset(home, 0.0, 0.0, -0.1)
+  place_pose = compute_offset(home, 0.3, 0.0, -0.1)
+
+  movej(home, a=1.4, v=1.05)
+  thrd = run monitor()
+
+  num_cycles = 5
+  for i = 0 to num_cycles:
+    if i == 0:
+      textmsg("starting first cycle")
+    elif i == num_cycles - 1:
+      textmsg("last cycle")
+    else:
+      textmsg("cycle ", i)
+    end
+
+    pick(pick_pose, 20.0)
+    place(place_pose)
+  end
+
+  kill thrd
+  movej(home)
+
+  # Deliberate typo to trigger "Did you mean?" code action
+  slepe(1.0)
+end
