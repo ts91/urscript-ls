@@ -95,6 +95,8 @@ func (a *analyzer) walkNode(n parser.Node) {
 		a.walkStmts(node.Body)
 	case *parser.ForStmt:
 		a.walkExpr(node.Iter)
+		a.walkExpr(node.Start)
+		a.walkExpr(node.End)
 		a.walkStmts(node.Body)
 	case *parser.ReturnStmt:
 		if node.Value != nil {

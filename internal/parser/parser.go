@@ -213,15 +213,34 @@ func (p *parser) parseForStmt() Node {
 	pos := Pos{Line: tok.Line, Column: tok.Column}
 
 	varTok := p.expect(TokenIdent)
-	// Expect 'in' as an identifier
-	inTok := p.cur()
-	if inTok.Type == TokenIdent && inTok.Value == "in" {
-		p.advance()
+
+	stmt := &ForStmt{Pos: pos, Var: varTok.Value}
+
+	if p.cur().Type == TokenAssign {
+		// "for i = start to end:" form
+		p.advance() // consume '='
+		stmt.Start = p.parseExpression()
+
+		toTok := p.cur()
+		if toTok.Type == TokenIdent && toTok.Value == "to" {
+			p.advance()
+		} else {
+			p.errorf(toTok, "expected 'to', got %q", toTok.Value)
+		}
+
+		stmt.End = p.parseExpression()
 	} else {
-		p.errorf(inTok, "expected 'in', got %q", inTok.Value)
+		// "for x in expr:" form
+		inTok := p.cur()
+		if inTok.Type == TokenIdent && inTok.Value == "in" {
+			p.advance()
+		} else {
+			p.errorf(inTok, "expected 'in' or '=', got %q", inTok.Value)
+		}
+
+		stmt.Iter = p.parseExpression()
 	}
 
-	iter := p.parseExpression()
 	p.expect(TokenColon)
 	p.skipNewlines()
 
@@ -229,7 +248,8 @@ func (p *parser) parseForStmt() Node {
 	p.expect(TokenEnd)
 	p.skipNewlines()
 
-	return &ForStmt{Pos: pos, Var: varTok.Value, Iter: iter, Body: body}
+	stmt.Body = body
+	return stmt
 }
 
 func (p *parser) parseReturnStmt() Node {

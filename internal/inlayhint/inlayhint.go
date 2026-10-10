@@ -45,6 +45,8 @@ func walkNode(n parser.Node, rng protocol.Range, registry *builtins.Registry, id
 		walkStmts(node.Body, rng, registry, idx, hints)
 	case *parser.ForStmt:
 		walkNode(node.Iter, rng, registry, idx, hints)
+		walkNode(node.Start, rng, registry, idx, hints)
+		walkNode(node.End, rng, registry, idx, hints)
 		walkStmts(node.Body, rng, registry, idx, hints)
 	case *parser.ReturnStmt:
 		walkNode(node.Value, rng, registry, idx, hints)
