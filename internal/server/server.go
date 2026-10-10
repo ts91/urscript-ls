@@ -168,13 +168,10 @@ func (s *Server) scanWorkspace() {
 			docURI := uri.File(path)
 			content := string(data)
 
-			// Only load if not already open in the editor.
-			if _, ok := s.store.Get(docURI); !ok {
-				s.store.Open(docURI, content)
-				prog, _ := parser.Parse(content)
-				idx := symbols.Build(prog, content)
-				s.store.SetIndex(docURI, idx)
-			}
+			s.store.OpenFromDisk(docURI, content)
+			prog, _ := parser.Parse(content)
+			idx := symbols.Build(prog, content)
+			s.store.SetIndex(docURI, idx)
 			return nil
 		})
 	}

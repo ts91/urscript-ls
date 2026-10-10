@@ -10,8 +10,11 @@ import (
 
 // entry holds a document's content and its symbol index.
 type entry struct {
-	content string
-	index   *symbols.Index
+	content     string
+	index       *symbols.Index
+	editorOpen  bool           // true if currently open in the editor
+	diskContent string         // content from workspace scan (preserved across editor close)
+	diskIndex   *symbols.Index // index from workspace scan
 }
 
 // Store holds the contents of open text documents.
@@ -27,11 +30,31 @@ func NewStore() *Store {
 	}
 }
 
-// Open stores a newly opened document.
+// Open stores a newly opened document (from the editor).
 func (s *Store) Open(u uri.URI, content string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.docs[u] = &entry{content: content}
+	if e, ok := s.docs[u]; ok {
+		// File was already indexed from disk; overlay with editor content.
+		e.content = content
+		e.index = nil
+		e.editorOpen = true
+	} else {
+		s.docs[u] = &entry{content: content, editorOpen: true}
+	}
+}
+
+// OpenFromDisk stores a document discovered by the workspace scanner.
+func (s *Store) OpenFromDisk(u uri.URI, content string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.docs[u]; ok {
+		return // already open in editor, don't overwrite
+	}
+	s.docs[u] = &entry{
+		content:     content,
+		diskContent: content,
+	}
 }
 
 // Update replaces the content of an open document.
@@ -46,11 +69,24 @@ func (s *Store) Update(u uri.URI, content string) {
 	}
 }
 
-// Close removes a document from the store.
+// Close handles the editor closing a document. If the file was loaded
+// from disk (workspace scan), it reverts to the disk content and index
+// rather than being deleted.
 func (s *Store) Close(u uri.URI) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	delete(s.docs, u)
+	e, ok := s.docs[u]
+	if !ok {
+		return
+	}
+	if e.diskContent != "" {
+		// Revert to disk-scanned state.
+		e.content = e.diskContent
+		e.index = e.diskIndex
+		e.editorOpen = false
+	} else {
+		delete(s.docs, u)
+	}
 }
 
 // Get returns the content of a document and whether it exists.
@@ -70,6 +106,10 @@ func (s *Store) SetIndex(u uri.URI, idx *symbols.Index) {
 	defer s.mu.Unlock()
 	if e, ok := s.docs[u]; ok {
 		e.index = idx
+		// If not editor-open, this is a disk scan index — save it.
+		if !e.editorOpen {
+			e.diskIndex = idx
+		}
 	}
 }
 
