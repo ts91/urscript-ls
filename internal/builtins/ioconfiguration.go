@@ -45,7 +45,7 @@ func ioconfigurationBuiltins() []Builtin {
 			Signature: "set_runstate_configurable_digital_output_to_value(outputId, state)",
 			Module:    "ioconfiguration",
 			Doc: "Set configurable digital output behavior based on program state.\n" +
-				"@param outputId int Output number [0-7]\n" +
+				"@param outputId int Port [0-7]\n" +
 				"@param state int Behavior (0=preserve, 1=low when stopped, 2=high when stopped, 3=high when running, 4=low on fault, 5=high from start/low on fault)",
 		},
 		{
@@ -53,7 +53,7 @@ func ioconfigurationBuiltins() []Builtin {
 			Signature: "set_runstate_gp_boolean_output_to_value(outputId, state)",
 			Module:    "ioconfiguration",
 			Doc: "Set general purpose boolean output behavior based on program state.\n" +
-				"@param outputId int Output number [0-127]\n" +
+				"@param outputId int Port [0-127]\n" +
 				"@param state int Behavior (0=preserve, 1=false when stopped, 2=true when stopped, 3=true when running, 4=false on fault, 5=true from start/false on fault)",
 		},
 		{
@@ -61,7 +61,7 @@ func ioconfigurationBuiltins() []Builtin {
 			Signature: "set_runstate_standard_analog_output_to_value(outputId, state)",
 			Module:    "ioconfiguration",
 			Doc: "Set standard analog output behavior based on program state.\n" +
-				"@param outputId int Output number [0-1]\n" +
+				"@param outputId int Port [0, 1]\n" +
 				"@param state int Behavior (0=preserve, 1=low when stopped, 2=high when stopped, 3=high when running, 4=low on fault, 5=high from start/low on fault)",
 		},
 		{
@@ -69,7 +69,7 @@ func ioconfigurationBuiltins() []Builtin {
 			Signature: "set_runstate_standard_digital_output_to_value(outputId, state)",
 			Module:    "ioconfiguration",
 			Doc: "Set standard digital output behavior based on program state.\n" +
-				"@param outputId int Output number [0-7]\n" +
+				"@param outputId int Port [0-7]\n" +
 				"@param state int Behavior (0=preserve, 1=low when stopped, 2=high when stopped, 3=high when running, 4=low on fault, 5=high from start/low on fault)",
 		},
 		{
@@ -77,7 +77,7 @@ func ioconfigurationBuiltins() []Builtin {
 			Signature: "set_runstate_tool_digital_output_to_value(outputId, state)",
 			Module:    "ioconfiguration",
 			Doc: "Set tool digital output behavior based on program state.\n" +
-				"@param outputId int Output number [0-1]\n" +
+				"@param outputId int Port [0, 1]\n" +
 				"@param state int Behavior (0=preserve, 1=low when stopped, 2=high when stopped, 3=high when running, 4=low on fault, 5=high from start/low on fault)",
 		},
 		{

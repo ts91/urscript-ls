@@ -30,7 +30,7 @@ func interfacesBuiltins() []Builtin {
 			Signature: "get_analog_in(n)",
 			Module:    "interfaces",
 			Doc: "Deprecated: Read analog input signal level. Use get_standard_analog_in or get_tool_analog_in.\n" +
-				"@param n int Input number [0-3] (ports 2-3 map to tool inputs)\n" +
+				"@param n int Port [0-3] (ports 2-3 map to tool inputs)\n" +
 				"@returns float Signal level in Amperes or Volts",
 		},
 		{
@@ -38,7 +38,7 @@ func interfacesBuiltins() []Builtin {
 			Signature: "get_analog_out(n)",
 			Module:    "interfaces",
 			Doc: "Deprecated: Read analog output signal level. Use get_standard_analog_out.\n" +
-				"@param n int Output number [0-1]\n" +
+				"@param n int Port [0, 1]\n" +
 				"@returns float Signal level in Amperes or Volts",
 		},
 		{
@@ -46,7 +46,7 @@ func interfacesBuiltins() []Builtin {
 			Signature: "get_standard_analog_in(n)",
 			Module:    "interfaces",
 			Doc: "Read standard analog input signal level.\n" +
-				"@param n int Input number [0-1]\n" +
+				"@param n int Port [0, 1]\n" +
 				"@returns float Signal level in Amperes or Volts",
 		},
 		{
@@ -54,7 +54,7 @@ func interfacesBuiltins() []Builtin {
 			Signature: "get_standard_analog_out(n)",
 			Module:    "interfaces",
 			Doc: "Read standard analog output signal level.\n" +
-				"@param n int Output number [0-1]\n" +
+				"@param n int Port [0, 1]\n" +
 				"@returns float Signal level in Amperes or Volts",
 		},
 		{
@@ -62,7 +62,7 @@ func interfacesBuiltins() []Builtin {
 			Signature: "get_tool_analog_in(n)",
 			Module:    "interfaces",
 			Doc: "Read tool analog input signal level.\n" +
-				"@param n int Input number [0-1]\n" +
+				"@param n int Port [0, 1]\n" +
 				"@returns float Signal level in Amperes or Volts",
 		},
 		{
@@ -70,7 +70,7 @@ func interfacesBuiltins() []Builtin {
 			Signature: "set_analog_out(n, f)",
 			Module:    "interfaces",
 			Doc: "Deprecated: Set analog output signal level. Use set_standard_analog_out.\n" +
-				"@param n int Output number [0-1]\n" +
+				"@param n int Port [0, 1]\n" +
 				"@param f float Relative signal level [0-1]",
 		},
 		{
@@ -78,7 +78,7 @@ func interfacesBuiltins() []Builtin {
 			Signature: "set_standard_analog_out(n, f)",
 			Module:    "interfaces",
 			Doc: "Set standard analog output signal level.\n" +
-				"@param n int Output number [0-1]\n" +
+				"@param n int Port [0, 1]\n" +
 				"@param f float Relative signal level [0-1]",
 		},
 		// Digital I/O
@@ -87,7 +87,7 @@ func interfacesBuiltins() []Builtin {
 			Signature: "get_configurable_digital_in(n)",
 			Module:    "interfaces",
 			Doc: "Read configurable digital input signal level.\n" +
-				"@param n int Input number [0-7]\n" +
+				"@param n int Port [0-7]\n" +
 				"@returns bool Signal level",
 		},
 		{
@@ -95,7 +95,7 @@ func interfacesBuiltins() []Builtin {
 			Signature: "get_configurable_digital_out(n)",
 			Module:    "interfaces",
 			Doc: "Read configurable digital output signal level.\n" +
-				"@param n int Output number [0-7]\n" +
+				"@param n int Port [0-7]\n" +
 				"@returns bool Signal level",
 		},
 		{
@@ -103,7 +103,7 @@ func interfacesBuiltins() []Builtin {
 			Signature: "get_digital_in(n)",
 			Module:    "interfaces",
 			Doc: "Deprecated: Read digital input. Use get_standard_digital_in or get_tool_digital_in.\n" +
-				"@param n int Input number [0-9] (ports 8-9 map to tool inputs)\n" +
+				"@param n int Port [0-9] (ports 8-9 map to tool inputs)\n" +
 				"@returns bool Signal level",
 		},
 		{
@@ -111,7 +111,7 @@ func interfacesBuiltins() []Builtin {
 			Signature: "get_digital_out(n)",
 			Module:    "interfaces",
 			Doc: "Deprecated: Read digital output. Use get_standard_digital_out or get_tool_digital_out.\n" +
-				"@param n int Output number [0-9] (ports 8-9 map to tool outputs)\n" +
+				"@param n int Port [0-9] (ports 8-9 map to tool outputs)\n" +
 				"@returns bool Signal level",
 		},
 		{
@@ -119,7 +119,7 @@ func interfacesBuiltins() []Builtin {
 			Signature: "get_standard_digital_in(n)",
 			Module:    "interfaces",
 			Doc: "Read standard digital input signal level.\n" +
-				"@param n int Input number [0-7]\n" +
+				"@param n int Port [0-7]\n" +
 				"@returns bool Signal level",
 		},
 		{
@@ -127,7 +127,7 @@ func interfacesBuiltins() []Builtin {
 			Signature: "get_standard_digital_out(n)",
 			Module:    "interfaces",
 			Doc: "Read standard digital output signal level.\n" +
-				"@param n int Output number [0-7]\n" +
+				"@param n int Port [0-7]\n" +
 				"@returns bool Signal level",
 		},
 		{
@@ -135,7 +135,7 @@ func interfacesBuiltins() []Builtin {
 			Signature: "get_tool_digital_in(n)",
 			Module:    "interfaces",
 			Doc: "Read tool digital input signal level.\n" +
-				"@param n int Input number [0-1]\n" +
+				"@param n int Port [0, 1]\n" +
 				"@returns bool Signal level",
 		},
 		{
@@ -143,7 +143,7 @@ func interfacesBuiltins() []Builtin {
 			Signature: "get_tool_digital_out(n)",
 			Module:    "interfaces",
 			Doc: "Read tool digital output signal level.\n" +
-				"@param n int Output number [0-1]\n" +
+				"@param n int Port [0, 1]\n" +
 				"@returns bool Signal level",
 		},
 		{
@@ -151,7 +151,7 @@ func interfacesBuiltins() []Builtin {
 			Signature: "set_configurable_digital_out(n, b)",
 			Module:    "interfaces",
 			Doc: "Set configurable digital output signal level.\n" +
-				"@param n int Output number [0-7]\n" +
+				"@param n int Port [0-7]\n" +
 				"@param b bool Signal level",
 		},
 		{
@@ -159,7 +159,7 @@ func interfacesBuiltins() []Builtin {
 			Signature: "set_digital_out(n, b)",
 			Module:    "interfaces",
 			Doc: "Deprecated: Set digital output. Use set_standard_digital_out or set_tool_digital_out.\n" +
-				"@param n int Output number [0-9] (ports 8-9 map to tool outputs)\n" +
+				"@param n int Port [0-9] (ports 8-9 map to tool outputs)\n" +
 				"@param b bool Signal level",
 		},
 		{
@@ -167,7 +167,7 @@ func interfacesBuiltins() []Builtin {
 			Signature: "set_standard_digital_out(n, b)",
 			Module:    "interfaces",
 			Doc: "Set standard digital output signal level.\n" +
-				"@param n int Output number [0-7]\n" +
+				"@param n int Port [0-7]\n" +
 				"@param b bool Signal level",
 		},
 		{
@@ -175,7 +175,7 @@ func interfacesBuiltins() []Builtin {
 			Signature: "set_tool_digital_out(n, b)",
 			Module:    "interfaces",
 			Doc: "Set tool digital output signal level.\n" +
-				"@param n int Output number [0-1]\n" +
+				"@param n int Port [0, 1]\n" +
 				"@param b bool Signal level",
 		},
 		// Flags
