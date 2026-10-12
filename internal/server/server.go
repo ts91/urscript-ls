@@ -12,28 +12,11 @@ import (
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
 
-	"github.com/ts91/urscript-ls/internal/callhierarchy"
 	"github.com/ts91/urscript-ls/internal/builtins"
-	"github.com/ts91/urscript-ls/internal/codeaction"
-	"github.com/ts91/urscript-ls/internal/codelens"
-	"github.com/ts91/urscript-ls/internal/completion"
-	"github.com/ts91/urscript-ls/internal/definition"
-	"github.com/ts91/urscript-ls/internal/diagnostics"
-	"github.com/ts91/urscript-ls/internal/docsymbols"
 	"github.com/ts91/urscript-ls/internal/document"
-	"github.com/ts91/urscript-ls/internal/folding"
-	"github.com/ts91/urscript-ls/internal/format"
-	"github.com/ts91/urscript-ls/internal/highlight"
-	"github.com/ts91/urscript-ls/internal/hover"
-	"github.com/ts91/urscript-ls/internal/inlayhint"
-	"github.com/ts91/urscript-ls/internal/ontypeformat"
+	"github.com/ts91/urscript-ls/internal/lsp"
 	"github.com/ts91/urscript-ls/internal/parser"
-	"github.com/ts91/urscript-ls/internal/references"
-	"github.com/ts91/urscript-ls/internal/selrange"
-	"github.com/ts91/urscript-ls/internal/semtokens"
-	"github.com/ts91/urscript-ls/internal/signature"
 	"github.com/ts91/urscript-ls/internal/symbols"
-	"github.com/ts91/urscript-ls/internal/workspacesymbol"
 )
 
 // Server implements protocol.Server for URScript.
@@ -98,7 +81,7 @@ func (s *Server) Initialize(_ context.Context, params *protocol.InitializeParams
 			FoldingRangeProvider:           protocol.Boolean(true),
 			SelectionRangeProvider:         protocol.Boolean(true),
 			SemanticTokensProvider: &protocol.SemanticTokensOptions{
-				Legend: semtokens.Legend(),
+				Legend: lsp.SemanticTokensLegend(),
 				Full:   protocol.Boolean(true),
 			},
 			WorkspaceSymbolProvider:        protocol.Boolean(true),
@@ -245,13 +228,13 @@ func (s *Server) Hover(_ context.Context, params *protocol.HoverParams) (*protoc
 		return nil, nil
 	}
 	idx := s.mergedIndex(params.TextDocument.URI)
-	return hover.Provide(content, params.Position, s.registry, idx), nil
+	return lsp.Hover(content, params.Position, s.registry, idx), nil
 }
 
 // Completion returns completion items for the current position.
 func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams) (protocol.CompletionResult, error) {
 	idx := s.mergedIndex(params.TextDocument.URI)
-	items := completion.Provide(idx, s.registry)
+	items := lsp.Completions(idx, s.registry)
 	return items, nil
 }
 
@@ -262,13 +245,13 @@ func (s *Server) SignatureHelp(_ context.Context, params *protocol.SignatureHelp
 		return nil, nil
 	}
 	idx := s.mergedIndex(params.TextDocument.URI)
-	return signature.Provide(content, params.Position, s.registry, idx), nil
+	return lsp.SignatureHelp(content, params.Position, s.registry, idx), nil
 }
 
 // DocumentSymbol returns the symbol outline for a document.
 func (s *Server) DocumentSymbol(_ context.Context, params *protocol.DocumentSymbolParams) (protocol.DocumentSymbolResult, error) {
 	idx := s.store.GetIndex(params.TextDocument.URI)
-	return docsymbols.Provide(idx), nil
+	return lsp.DocumentSymbols(idx), nil
 }
 
 // Definition returns the definition location for the symbol at the cursor.
@@ -279,7 +262,7 @@ func (s *Server) Definition(_ context.Context, params *protocol.DefinitionParams
 	}
 	// Try current file first.
 	idx := s.store.GetIndex(params.TextDocument.URI)
-	result := definition.Provide(content, params.Position, params.TextDocument.URI, idx)
+	result := lsp.Definition(content, params.Position, params.TextDocument.URI, idx)
 	if len(result) > 0 {
 		return result, nil
 	}
@@ -325,8 +308,8 @@ func (s *Server) References(_ context.Context, params *protocol.ReferenceParams)
 		if !ok {
 			continue
 		}
-		positions := references.FindAllInSource(src, word)
-		allLocs = append(allLocs, references.ToLocations(positions, docURI)...)
+		positions := lsp.FindAllInSource(src, word)
+		allLocs = append(allLocs, lsp.ToLocations(positions, docURI)...)
 	}
 	_ = content // already used for wordAt
 	return allLocs, nil
@@ -348,9 +331,9 @@ func (s *Server) Rename(_ context.Context, params *protocol.RenameParams) (*prot
 		if !ok {
 			continue
 		}
-		positions := references.FindAllInSource(src, word)
+		positions := lsp.FindAllInSource(src, word)
 		if len(positions) > 0 {
-			changes[docURI] = references.ToTextEdits(positions, params.NewName)
+			changes[docURI] = lsp.ToTextEdits(positions, params.NewName)
 		}
 	}
 	if len(changes) == 0 {
@@ -366,13 +349,13 @@ func (s *Server) DocumentHighlight(_ context.Context, params *protocol.DocumentH
 		return nil, nil
 	}
 	word := wordAt(content, params.Position)
-	return highlight.Provide(content, params.Position, word), nil
+	return lsp.Highlights(content, params.Position, word), nil
 }
 
 // Symbols returns workspace symbols matching a query.
 func (s *Server) Symbols(_ context.Context, params *protocol.WorkspaceSymbolParams) (protocol.WorkspaceSymbolResult, error) {
 	indices := s.store.AllIndices()
-	return workspacesymbol.Provide(params.Query, indices), nil
+	return lsp.WorkspaceSymbols(params.Query, indices), nil
 }
 
 // PrepareCallHierarchy returns call hierarchy items for the symbol at cursor.
@@ -382,20 +365,20 @@ func (s *Server) PrepareCallHierarchy(_ context.Context, params *protocol.CallHi
 		return nil, nil
 	}
 	idx := s.mergedIndex(params.TextDocument.URI)
-	return callhierarchy.Prepare(content, params.Position, params.TextDocument.URI, idx), nil
+	return lsp.PrepareCallHierarchy(content, params.Position, params.TextDocument.URI, idx), nil
 }
 
 // IncomingCalls returns functions that call the given item.
 func (s *Server) IncomingCalls(_ context.Context, params *protocol.CallHierarchyIncomingCallsParams) ([]protocol.CallHierarchyIncomingCall, error) {
 	allDocs := s.store.AllContents()
 	allIdx := s.store.AllIndices()
-	return callhierarchy.IncomingCalls(params.Item, allDocs, allIdx), nil
+	return lsp.IncomingCalls(params.Item, allDocs, allIdx), nil
 }
 
 // OutgoingCalls returns functions called from the given item.
 func (s *Server) OutgoingCalls(_ context.Context, params *protocol.CallHierarchyOutgoingCallsParams) ([]protocol.CallHierarchyOutgoingCall, error) {
 	allIdx := s.store.AllIndices()
-	return callhierarchy.OutgoingCalls(params.Item, allIdx), nil
+	return lsp.OutgoingCalls(params.Item, allIdx), nil
 }
 
 // DidChangeWatchedFiles re-indexes files that changed on disk.
@@ -428,14 +411,14 @@ func (s *Server) InlayHint(_ context.Context, params *protocol.InlayHintParams) 
 	}
 	prog, _ := parser.Parse(content)
 	idx := s.mergedIndex(params.TextDocument.URI)
-	return inlayhint.Provide(prog, params.Range, s.registry, idx), nil
+	return lsp.InlayHints(prog, params.Range, s.registry, idx), nil
 }
 
 // CodeLens returns reference count lenses above function definitions.
 func (s *Server) CodeLens(_ context.Context, params *protocol.CodeLensParams) ([]protocol.CodeLens, error) {
 	idx := s.store.GetIndex(params.TextDocument.URI)
 	allDocs := s.store.AllContents()
-	return codelens.Provide(params.TextDocument.URI, idx, allDocs), nil
+	return lsp.CodeLenses(params.TextDocument.URI, idx, allDocs), nil
 }
 
 // OnTypeFormatting handles auto-indentation on newline.
@@ -444,13 +427,13 @@ func (s *Server) OnTypeFormatting(_ context.Context, params *protocol.DocumentOn
 	if !ok {
 		return nil, nil
 	}
-	return ontypeformat.Provide(content, params.Position, params.Ch, params.Options), nil
+	return lsp.OnTypeFormat(content, params.Position, params.Ch, params.Options), nil
 }
 
 // CodeAction returns quick fixes for diagnostics.
 func (s *Server) CodeAction(_ context.Context, params *protocol.CodeActionParams) ([]protocol.CommandOrCodeAction, error) {
 	idx := s.mergedIndex(params.TextDocument.URI)
-	return codeaction.Provide(params, s.registry, idx), nil
+	return lsp.CodeActions(params, s.registry, idx), nil
 }
 
 // SemanticTokensFull returns semantic tokens for the entire document.
@@ -460,7 +443,7 @@ func (s *Server) SemanticTokensFull(_ context.Context, params *protocol.Semantic
 		return nil, nil
 	}
 	idx := s.mergedIndex(params.TextDocument.URI)
-	return semtokens.Provide(content, s.registry, idx), nil
+	return lsp.SemanticTokens(content, s.registry, idx), nil
 }
 
 // SelectionRange returns nested selection ranges for smart expand/shrink.
@@ -470,7 +453,7 @@ func (s *Server) SelectionRange(_ context.Context, params *protocol.SelectionRan
 		return nil, nil
 	}
 	prog, _ := parser.Parse(content)
-	return selrange.Provide(prog, content, params.Positions), nil
+	return lsp.SelectionRanges(prog, content, params.Positions), nil
 }
 
 // FoldingRanges returns folding ranges for blocks and comment runs.
@@ -480,7 +463,7 @@ func (s *Server) FoldingRanges(_ context.Context, params *protocol.FoldingRangeP
 		return nil, nil
 	}
 	prog, _ := parser.Parse(content)
-	return folding.Provide(prog, content), nil
+	return lsp.FoldingRanges(prog, content), nil
 }
 
 // Formatting reformats the entire document.
@@ -489,7 +472,7 @@ func (s *Server) Formatting(_ context.Context, params *protocol.DocumentFormatti
 	if !ok {
 		return nil, nil
 	}
-	return format.Format(content, params.Options), nil
+	return lsp.Format(content, params.Options), nil
 }
 
 // mergedIndex returns a symbol index combining the current file's index
@@ -565,7 +548,7 @@ func (s *Server) publishDiagnostics(ctx context.Context, docURI uri.URI) error {
 
 	// Semantic diagnostics use merged index so cross-file symbols are known.
 	merged := s.mergedIndex(docURI)
-	diags = append(diags, diagnostics.Analyze(prog, merged, s.registry)...)
+	diags = append(diags, lsp.Analyze(prog, merged, s.registry)...)
 
 	c := s.getClient()
 	if c == nil {
