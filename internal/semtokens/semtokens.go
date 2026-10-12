@@ -84,7 +84,7 @@ func Provide(source string, registry *builtins.Registry, idx *symbols.Index) *pr
 
 		switch tok.Type {
 		case parser.TokenDef, parser.TokenEnd, parser.TokenIf, parser.TokenElif,
-			parser.TokenElse, parser.TokenWhile, parser.TokenFor, parser.TokenReturn,
+			parser.TokenElse, parser.TokenWhile, parser.TokenReturn,
 			parser.TokenGlobal, parser.TokenLocal, parser.TokenTrue, parser.TokenFalse,
 			parser.TokenNot, parser.TokenAnd, parser.TokenOr, parser.TokenThread:
 			tokenType = ttKeyword

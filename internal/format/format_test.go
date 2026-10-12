@@ -104,9 +104,9 @@ func TestFormatThread(t *testing.T) {
 	}
 }
 
-func TestFormatWhileFor(t *testing.T) {
-	input := "while True:\nx = 1\nend\nfor i in range(10):\ny = i\nend\n"
-	expected := "while True:\n  x = 1\nend\nfor i in range(10):\n  y = i\nend\n"
+func TestFormatWhile(t *testing.T) {
+	input := "while True:\nx = 1\nend\n"
+	expected := "while True:\n  x = 1\nend\n"
 
 	edits := Format(input, defaultOpts)
 	if len(edits) == 0 {

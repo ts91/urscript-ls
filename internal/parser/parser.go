@@ -88,8 +88,6 @@ func (p *parser) parseStatement() Node {
 		return p.parseIfStmt()
 	case TokenWhile:
 		return p.parseWhileStmt()
-	case TokenFor:
-		return p.parseForStmt()
 	case TokenReturn:
 		return p.parseReturnStmt()
 	case TokenGlobal:
@@ -206,50 +204,6 @@ func (p *parser) parseWhileStmt() Node {
 	p.skipNewlines()
 
 	return &WhileStmt{Pos: pos, Condition: cond, Body: body}
-}
-
-func (p *parser) parseForStmt() Node {
-	tok := p.advance() // consume 'for'
-	pos := Pos{Line: tok.Line, Column: tok.Column}
-
-	varTok := p.expect(TokenIdent)
-
-	stmt := &ForStmt{Pos: pos, Var: varTok.Value}
-
-	if p.cur().Type == TokenAssign {
-		// "for i = start to end:" form
-		p.advance() // consume '='
-		stmt.Start = p.parseExpression()
-
-		toTok := p.cur()
-		if toTok.Type == TokenIdent && toTok.Value == "to" {
-			p.advance()
-		} else {
-			p.errorf(toTok, "expected 'to', got %q", toTok.Value)
-		}
-
-		stmt.End = p.parseExpression()
-	} else {
-		// "for x in expr:" form
-		inTok := p.cur()
-		if inTok.Type == TokenIdent && inTok.Value == "in" {
-			p.advance()
-		} else {
-			p.errorf(inTok, "expected 'in' or '=', got %q", inTok.Value)
-		}
-
-		stmt.Iter = p.parseExpression()
-	}
-
-	p.expect(TokenColon)
-	p.skipNewlines()
-
-	body := p.parseBlock(TokenEnd)
-	p.expect(TokenEnd)
-	p.skipNewlines()
-
-	stmt.Body = body
-	return stmt
 }
 
 func (p *parser) parseReturnStmt() Node {
@@ -605,8 +559,6 @@ func tokenName(tt TokenType) string {
 		return "else"
 	case TokenWhile:
 		return "while"
-	case TokenFor:
-		return "for"
 	case TokenReturn:
 		return "return"
 	case TokenGlobal:

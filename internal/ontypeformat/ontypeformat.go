@@ -6,7 +6,7 @@ import (
 	"go.lsp.dev/protocol"
 )
 
-var blockOpeners = []string{"def ", "thread ", "if ", "elif ", "else:", "else ", "while ", "for "}
+var blockOpeners = []string{"def ", "thread ", "if ", "elif ", "else:", "else ", "while "}
 
 // Provide returns text edits for on-type formatting.
 // Triggered on newline to auto-indent after block openers.

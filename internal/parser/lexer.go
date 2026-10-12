@@ -26,7 +26,6 @@ const (
 	TokenElif
 	TokenElse
 	TokenWhile
-	TokenFor
 	TokenReturn
 	TokenGlobal
 	TokenLocal
@@ -72,7 +71,6 @@ var keywords = map[string]TokenType{
 	"elif":   TokenElif,
 	"else":   TokenElse,
 	"while":  TokenWhile,
-	"for":    TokenFor,
 	"return": TokenReturn,
 	"global": TokenGlobal,
 	"local":  TokenLocal,

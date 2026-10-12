@@ -134,14 +134,6 @@ func (f *finder) walkNode(n parser.Node) {
 		f.walkNode(node.Condition)
 		f.walkStmts(node.Body)
 
-	case *parser.ForStmt:
-		if node.Var == f.name {
-			// "for VAR in ...": VAR starts after "for ".
-			f.add(parser.Pos{Line: node.Pos.Line, Column: node.Pos.Column + 4}, len(node.Var))
-		}
-		f.walkNode(node.Iter)
-		f.walkStmts(node.Body)
-
 	case *parser.ReturnStmt:
 		f.walkNode(node.Value)
 

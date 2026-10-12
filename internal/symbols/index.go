@@ -170,14 +170,6 @@ func (b *builder) walkNode(n parser.Node) {
 	case *parser.WhileStmt:
 		b.walkStmts(node.Body)
 
-	case *parser.ForStmt:
-		b.idx.add(Symbol{
-			Name: node.Var,
-			Kind: KindVariable,
-			Pos:  node.Pos,
-		})
-		b.walkStmts(node.Body)
-
 	default:
 		// ExprStmt, ReturnStmt, etc. — no symbols to extract
 	}

@@ -11,7 +11,7 @@ import (
 )
 
 var keywords = []string{
-	"def", "end", "if", "elif", "else", "while", "for", "return",
+	"def", "end", "if", "elif", "else", "while", "return",
 	"global", "local", "True", "False", "and", "or", "not", "thread",
 }
 

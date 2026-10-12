@@ -291,27 +291,6 @@ end`
 	}
 }
 
-func TestParseForLoop(t *testing.T) {
-	input := `for i in range(10):
-  x = i
-end`
-	prog, errs := Parse(input)
-	if len(errs) != 0 {
-		t.Fatalf("expected no errors, got %v", errs)
-	}
-	if len(prog.Stmts) != 1 {
-		t.Fatalf("expected 1 statement, got %d", len(prog.Stmts))
-	}
-
-	forStmt, ok := prog.Stmts[0].(*ForStmt)
-	if !ok {
-		t.Fatalf("expected *ForStmt, got %T", prog.Stmts[0])
-	}
-	if forStmt.Var != "i" {
-		t.Errorf("expected var 'i', got %q", forStmt.Var)
-	}
-}
-
 func TestParseComplexProgram(t *testing.T) {
 	input := `def main():
   global speed = 1.05

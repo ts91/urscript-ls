@@ -93,11 +93,6 @@ func (a *analyzer) walkNode(n parser.Node) {
 	case *parser.WhileStmt:
 		a.walkExpr(node.Condition)
 		a.walkStmts(node.Body)
-	case *parser.ForStmt:
-		a.walkExpr(node.Iter)
-		a.walkExpr(node.Start)
-		a.walkExpr(node.End)
-		a.walkStmts(node.Body)
 	case *parser.ReturnStmt:
 		if node.Value != nil {
 			a.walkExpr(node.Value)

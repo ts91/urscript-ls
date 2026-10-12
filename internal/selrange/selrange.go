@@ -85,8 +85,6 @@ func findContainingRec(stmts []parser.Node, line int, chain *[]parser.Node) {
 			findContainingRec(node.Else, line, chain)
 		case *parser.WhileStmt:
 			findContainingRec(node.Body, line, chain)
-		case *parser.ForStmt:
-			findContainingRec(node.Body, line, chain)
 		}
 		return
 	}
@@ -116,8 +114,6 @@ func nodeContainsLine(n parser.Node, line int) bool {
 		// +1 for the "end" keyword line
 		return line >= startLine && line <= end+1
 	case *parser.WhileStmt:
-		return line >= startLine && line <= endLine(node.Body, startLine)+1
-	case *parser.ForStmt:
 		return line >= startLine && line <= endLine(node.Body, startLine)+1
 	default:
 		return line == startLine
@@ -156,8 +152,6 @@ func rangeForNode(n parser.Node, lines []string) protocol.Range {
 		}
 		end++
 	case *parser.WhileStmt:
-		end = endLine(node.Body, startLine) + 1
-	case *parser.ForStmt:
 		end = endLine(node.Body, startLine) + 1
 	default:
 		end = startLine

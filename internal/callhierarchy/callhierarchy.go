@@ -180,11 +180,6 @@ func findCallExprsInNode(n parser.Node, name string, ranges *[]protocol.Range) {
 	case *parser.WhileStmt:
 		findCallExprsInNode(node.Condition, name, ranges)
 		findCallExprs(node.Body, name, ranges)
-	case *parser.ForStmt:
-		findCallExprsInNode(node.Iter, name, ranges)
-		findCallExprsInNode(node.Start, name, ranges)
-		findCallExprsInNode(node.End, name, ranges)
-		findCallExprs(node.Body, name, ranges)
 	case *parser.BinaryExpr:
 		findCallExprsInNode(node.Left, name, ranges)
 		findCallExprsInNode(node.Right, name, ranges)

@@ -52,9 +52,6 @@ func walkNode(n parser.Node, ranges *[]protocol.FoldingRange) {
 		addBlockRange(node.Pos, node.Body, ranges)
 		walkStmts(node.Body, ranges)
 
-	case *parser.ForStmt:
-		addBlockRange(node.Pos, node.Body, ranges)
-		walkStmts(node.Body, ranges)
 	}
 }
 

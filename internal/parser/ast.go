@@ -69,19 +69,6 @@ type WhileStmt struct {
 
 func (w *WhileStmt) nodePos() Pos { return w.Pos }
 
-// ForStmt represents for...end.
-// Two forms: "for x in expr:" (Iter set) or "for x = start to end:" (Start/End set).
-type ForStmt struct {
-	Pos   Pos
-	Var   string
-	Iter  Node   // for...in form
-	Start Node   // for...to form: start value
-	End   Node   // for...to form: end value
-	Body  []Node
-}
-
-func (f *ForStmt) nodePos() Pos { return f.Pos }
-
 // ReturnStmt represents a return statement.
 type ReturnStmt struct {
 	Pos   Pos
