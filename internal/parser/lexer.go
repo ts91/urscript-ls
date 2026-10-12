@@ -307,13 +307,14 @@ func (l *Lexer) lexDocBlock() {
 }
 
 func (l *Lexer) lexString() {
+	startLine := l.line
 	startCol := l.col
 	l.pos++ // skip opening "
 	l.col++
 	var sb strings.Builder
 	sb.WriteByte('"')
 
-	for l.pos < len(l.input) && l.input[l.pos] != '"' && l.input[l.pos] != '\n' {
+	for l.pos < len(l.input) && l.input[l.pos] != '"' {
 		if l.input[l.pos] == '\\' && l.pos+1 < len(l.input) {
 			sb.WriteByte(l.input[l.pos])
 			l.pos++
@@ -321,6 +322,13 @@ func (l *Lexer) lexString() {
 			sb.WriteByte(l.input[l.pos])
 			l.pos++
 			l.col++
+			continue
+		}
+		if l.input[l.pos] == '\n' {
+			sb.WriteByte('\n')
+			l.pos++
+			l.line++
+			l.col = 0
 			continue
 		}
 		sb.WriteByte(l.input[l.pos])
@@ -335,14 +343,14 @@ func (l *Lexer) lexString() {
 		l.tokens = append(l.tokens, Token{
 			Type:   TokenString,
 			Value:  sb.String(),
-			Line:   l.line,
+			Line:   startLine,
 			Column: startCol,
 		})
 	} else {
 		l.tokens = append(l.tokens, Token{
 			Type:   TokenIllegal,
 			Value:  sb.String(),
-			Line:   l.line,
+			Line:   startLine,
 			Column: startCol,
 		})
 	}
