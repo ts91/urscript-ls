@@ -100,6 +100,9 @@ func (a *analyzer) walkNode(n parser.Node) {
 	case *parser.Assignment:
 		a.walkExpr(node.Value)
 	case *parser.ExprStmt:
+		if id, ok := node.Expr.(*parser.Identifier); ok && id.Name == "for" {
+			a.warn(id.Pos, "'for' loops are not supported in URScript, use 'while' instead")
+		}
 		a.walkExpr(node.Expr)
 	case *parser.GlobalStmt:
 		if node.Init != nil {
