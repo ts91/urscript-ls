@@ -1,70 +1,91 @@
 ###
-Pick-and-place example program.
-Demonstrates language features for LSP testing.
+# Pick-and-place example program.
+# Demonstrates a typical UR application with gripper control.
 ###
 
 global speed_factor = 1.0
 
-###
-# Move the robot to a waypoint using linear motion.
-# @param waypoint pose The target position
-# @param speed float Movement speed scaling
-# @returns bool True if the position was reached
-###
-def move_to(waypoint, speed):
-  local v = 0.25 * speed
-  movel(waypoint, a=1.2, v=v)
-  return True
-end
-
-# Monitor thread that logs joint positions.
-thread monitor():
+# Background thread that monitors force and logs warnings.
+thread force_monitor():
   while True:
-    q = get_actual_joint_positions()
-    textmsg("joints: ", q)
-    sleep(0.5)
+    local force = norm(get_tcp_force())
+    if force > 50.0:
+      textmsg("Warning: high force detected: ", force)
+    end
+    sleep(0.1)
   end
 end
 
-def pick(target_pose, grip_force):
-  move_to(target_pose, speed_factor)
-  sleep(0.1)
-  set_digital_out(0, True)
-  wait_for_gripper(grip_force)
+###
+# Pick up a part at the given pose.
+# Approaches from above, closes the gripper, then retracts.
+# @param target pose The pick position
+# @param grip_force float Gripper force in Newtons
+# @returns bool True if grip was successful
+###
+def pick(target, grip_force):
+  local approach = compute_offset(target, 0, 0, safe_height)
+  move_to(approach, max_speed * speed_factor)
+  move_to(target, 0.1)
+
+  set_standard_digital_out(0, True)
+  local ok = wait_for_signal(0)
+  if not ok:
+    textmsg("Pick failed: gripper timeout")
+    return False
+  end
+
+  move_to(approach, 0.5)
+  return True
 end
 
-def place(target_pose):
-  move_to(target_pose, speed_factor)
-  sleep(0.1)
-  set_digital_out(0, False)
+###
+# Place a part at the given pose.
+# Approaches from above, opens the gripper, then retracts.
+# @param target pose The place position
+###
+def place(target):
+  local approach = compute_offset(target, 0, 0, safe_height)
+  move_to(approach, max_speed * speed_factor)
+  move_to(target, 0.1)
+
+  set_standard_digital_out(0, False)
+  sleep(0.2)
+
+  move_to(approach, 0.5)
 end
 
 # Main program
 def main():
-  home = p[0, -1.5708, 0, -1.5708, 0, 0]
-  pick_pose = compute_offset(home, 0.0, 0.0, -0.1)
-  place_pose = compute_offset(home, 0.3, 0.0, -0.1)
+  local home = p[0, -1.5708, 0, -1.5708, 0, 0]
+  local pick_pose = compute_offset(home, 0.3, 0.0, -0.1)
+  local place_pose = compute_offset(home,
+    0.3, 0.2, -0.1)
 
+  # Move to home and start monitoring
   movej(home, a=1.4, v=1.05)
-  thrd = run monitor()
+  local thrd = run force_monitor()
 
-  num_cycles = 5
-  for i = 0 to num_cycles:
-    if i == 0:
-      textmsg("starting first cycle")
-    elif i == num_cycles - 1:
-      textmsg("last cycle")
+  local cycle = 0
+  while cycle < cycle_count:
+    if cycle == 0:
+      textmsg("Starting first cycle")
+    elif cycle == cycle_count - 1:
+      textmsg("Final cycle")
     else:
-      textmsg("cycle ", i)
+      textmsg("Cycle ", cycle)
     end
 
-    pick(pick_pose, 20.0)
+    local grip = clamp(grip_force, 5.0, 40.0)
+    pick(pick_pose, grip)
     place(place_pose)
+
+    cycle = cycle + 1
   end
 
   kill thrd
   movej(home)
 
-  # Deliberate typo to trigger "Did you mean?" code action
+  # Deliberate typo: triggers "Did you mean 'sleep'?" code action
   slepe(1.0)
 end

@@ -1,36 +1,60 @@
 ###
-Utility functions shared across programs.
+# Utility functions for pick-and-place operations.
+# Shared across program files.
 ###
 
-global default_force = 10.0
+global default_acceleration = 1.2
 
 ###
-@param base pose The base pose to offset from
-@param dx float X offset in meters
-@param dy float Y offset in meters
-@param dz float Z offset in meters
-@returns pose The resulting pose
+# Compute a pose offset from a base pose.
+# @param base pose The base pose to offset from
+# @param dx float X offset in meters
+# @param dy float Y offset in meters
+# @param dz float Z offset in meters
+# @returns pose The resulting offset pose
 ###
 def compute_offset(base, dx, dy, dz):
   return pose_add(base, p[dx, dy, dz, 0, 0, 0])
 end
 
-# Wait until the gripper reports a stable grip.
-def wait_for_gripper(force):
-  local timeout = 3.0
+###
+# Move the robot linearly to a target pose.
+# Uses the global default_acceleration unless overridden.
+# @param target pose The target position
+# @param speed float Movement speed in m/s
+# @param accel float Acceleration in m/s^2 (default: global value)
+# @returns bool True when the position is reached
+###
+def move_to(target, speed, accel=default_acceleration):
+  movel(target, a=accel, v=speed)
+  return True
+end
+
+###
+# Wait for a digital input to go high within a timeout.
+# @param port int Digital input port to monitor
+# @param timeout float Maximum wait time in seconds
+# @returns bool True if the signal went high, False on timeout
+###
+def wait_for_signal(port, timeout=3.0):
   local elapsed = 0.0
   while elapsed < timeout:
-    if get_digital_in(0) == True:
+    if get_digital_in(port) == True:
       return True
     end
     sleep(0.05)
     elapsed = elapsed + 0.05
   end
-  textmsg("gripper timeout", default_force)
   return False
 end
 
-# Clamp a value between lo and hi.
+###
+# Clamp a numeric value between a lower and upper bound.
+# @param val float The value to clamp
+# @param lo float Lower bound
+# @param hi float Upper bound
+# @returns float The clamped value
+###
 def clamp(val, lo, hi):
   if val < lo:
     return lo
