@@ -28,6 +28,9 @@ func Provide(idx *symbols.Index) protocol.DocumentSymbolSlice {
 }
 
 func toDocumentSymbol(sym symbols.Symbol) *protocol.DocumentSymbol {
+	if sym.Name == "" {
+		return nil
+	}
 	// Skip params — they're children of functions, not top-level symbols.
 	if sym.Kind == symbols.KindParam {
 		return nil

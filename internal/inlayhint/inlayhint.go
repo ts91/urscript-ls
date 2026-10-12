@@ -11,8 +11,15 @@ import (
 )
 
 // Provide returns inlay hints for parameter names at call sites.
-func Provide(prog *parser.Program, rng protocol.Range, registry *builtins.Registry, idx *symbols.Index) []protocol.InlayHint {
-	var hints []protocol.InlayHint
+func Provide(prog *parser.Program, rng protocol.Range, registry *builtins.Registry, idx *symbols.Index) (hints []protocol.InlayHint) {
+	if prog == nil {
+		return nil
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			hints = nil
+		}
+	}()
 	walkStmts(prog.Stmts, rng, registry, idx, &hints)
 	return hints
 }
