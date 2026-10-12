@@ -139,12 +139,14 @@ func (p *parser) parseThreadDef() Node {
 }
 
 func (p *parser) parseParamList() (params []string, requiredArgs int) {
+	p.skipNewlines()
 	if p.cur().Type == TokenRParen {
 		return nil, 0
 	}
 
 	required := 0
 	parseOne := func() {
+		p.skipNewlines()
 		nameTok := p.expect(TokenIdent)
 		params = append(params, nameTok.Value)
 		if p.cur().Type == TokenAssign {
@@ -160,6 +162,7 @@ func (p *parser) parseParamList() (params []string, requiredArgs int) {
 		p.advance()
 		parseOne()
 	}
+	p.skipNewlines()
 	return params, required
 }
 
@@ -168,6 +171,7 @@ func (p *parser) parseParamList() (params []string, requiredArgs int) {
 func (p *parser) skipDefaultValue() {
 	depth := 0
 	for {
+		p.skipNewlines()
 		cur := p.cur().Type
 		if cur == TokenEOF {
 			return
@@ -515,7 +519,9 @@ func (p *parser) parsePrimary() Node {
 
 	case TokenLParen:
 		p.advance()
+		p.skipNewlines()
 		expr := p.parseExpression()
+		p.skipNewlines()
 		p.expect(TokenRParen)
 		return expr
 
@@ -531,27 +537,33 @@ func (p *parser) parseListLiteral() Node {
 	tok := p.advance() // consume [
 	pos := Pos{Line: tok.Line, Column: tok.Column}
 	var elems []Node
+	p.skipNewlines()
 	if p.cur().Type != TokenRBracket {
 		elems = append(elems, p.parseExpression())
 		for p.cur().Type == TokenComma {
 			p.advance()
+			p.skipNewlines()
 			elems = append(elems, p.parseExpression())
 		}
 	}
+	p.skipNewlines()
 	p.expect(TokenRBracket)
 	return &ListLit{Pos: pos, Elements: elems}
 }
 
 func (p *parser) parseArgList() []Node {
 	var args []Node
+	p.skipNewlines()
 	if p.cur().Type == TokenRParen {
 		return args
 	}
 	args = append(args, p.parseArgument())
 	for p.cur().Type == TokenComma {
 		p.advance()
+		p.skipNewlines()
 		args = append(args, p.parseArgument())
 	}
+	p.skipNewlines()
 	return args
 }
 
