@@ -66,41 +66,29 @@
             "patterns": [
                 {
                     "name": "comment.block.documentation.urscript",
-                    "begin": "\\s*(###)$",
-                    "end": "\\s*(###)$",
+                    "begin": "^\\s*(###)\\s*$",
+                    "end": "^\\s*(###)\\s*$",
                     "patterns": [
                         {
-                            "name": "comment.block.documentation.urscript",
-                            "begin": "(@param)\\s+(\\w+)",
-                            "end": "(none|void|bool|number|int|float|array|pose|string|struct|matrix)",
-                            "beginCaptures": {
-                                "1": {
-                                    "name": "entity.name.tag.urscript"
-                                },
-                                "2": {
-                                    "name": "variable.name.urscript"
-                                }
-                            },
-                            "endCaptures": {
-                                "1": {
-                                    "name": "entity.name.type.urscript"
-                                }
+                            "match": "#\\s*(@param)\\s+(\\w+)\\s+(none|void|bool|number|int|float|array|pose|string|struct|matrix|list)\\b(.*)",
+                            "captures": {
+                                "1": { "name": "entity.name.tag.urscript" },
+                                "2": { "name": "variable.other.urscript" },
+                                "3": { "name": "entity.name.type.urscript" },
+                                "4": { "name": "comment.block.documentation.urscript" }
+                            }
+                        },
+                        {
+                            "match": "#\\s*(@returns)\\s+(none|void|bool|number|int|float|array|pose|string|struct|matrix|list)\\b(.*)",
+                            "captures": {
+                                "1": { "name": "entity.name.tag.urscript" },
+                                "2": { "name": "entity.name.type.urscript" },
+                                "3": { "name": "comment.block.documentation.urscript" }
                             }
                         },
                         {
                             "name": "comment.block.documentation.urscript",
-                            "begin": "(@returns)",
-                            "end": "(none|void|bool|number|int|float|array|pose|string|struct|matrix)",
-                            "beginCaptures": {
-                                "1": {
-                                    "name": "entity.name.tag.urscript"
-                                }
-                            },
-                            "endCaptures": {
-                                "1": {
-                                    "name": "entity.name.type.urscript"
-                                }
-                            }
+                            "match": "#.*"
                         }
                     ]
                 },
