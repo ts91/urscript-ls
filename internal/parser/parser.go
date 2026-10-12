@@ -107,7 +107,7 @@ func (p *parser) parseFunctionDef() Node {
 	name := nameTok.Value
 
 	p.expect(TokenLParen)
-	params := p.parseParamList()
+	params, requiredArgs := p.parseParamList()
 	p.expect(TokenRParen)
 	p.expect(TokenColon)
 	p.skipNewlines()
@@ -116,7 +116,7 @@ func (p *parser) parseFunctionDef() Node {
 	p.expect(TokenEnd)
 	p.skipNewlines()
 
-	return &FunctionDef{Pos: pos, Name: name, Params: params, Body: body}
+	return &FunctionDef{Pos: pos, Name: name, Params: params, RequiredArgs: requiredArgs, Body: body}
 }
 
 func (p *parser) parseThreadDef() Node {
@@ -138,19 +138,54 @@ func (p *parser) parseThreadDef() Node {
 	return &ThreadDef{Pos: pos, Name: name, Body: body}
 }
 
-func (p *parser) parseParamList() []string {
-	var params []string
+func (p *parser) parseParamList() (params []string, requiredArgs int) {
 	if p.cur().Type == TokenRParen {
-		return params
+		return nil, 0
 	}
-	nameTok := p.expect(TokenIdent)
-	params = append(params, nameTok.Value)
+
+	required := 0
+	parseOne := func() {
+		nameTok := p.expect(TokenIdent)
+		params = append(params, nameTok.Value)
+		if p.cur().Type == TokenAssign {
+			p.advance()
+			p.skipDefaultValue()
+		} else {
+			required++
+		}
+	}
+
+	parseOne()
 	for p.cur().Type == TokenComma {
 		p.advance()
-		nameTok = p.expect(TokenIdent)
-		params = append(params, nameTok.Value)
+		parseOne()
 	}
-	return params
+	return params, required
+}
+
+// skipDefaultValue consumes tokens for a default parameter value,
+// stopping before comma or closing paren. Handles nested parens/brackets.
+func (p *parser) skipDefaultValue() {
+	depth := 0
+	for {
+		cur := p.cur().Type
+		if cur == TokenEOF {
+			return
+		}
+		if depth == 0 && (cur == TokenComma || cur == TokenRParen) {
+			return
+		}
+		if cur == TokenLParen || cur == TokenLBracket {
+			depth++
+		} else if cur == TokenRParen || cur == TokenRBracket {
+			if depth > 0 {
+				depth--
+			} else {
+				return
+			}
+		}
+		p.advance()
+	}
 }
 
 func (p *parser) parseIfStmt() Node {

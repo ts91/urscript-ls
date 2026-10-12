@@ -163,10 +163,13 @@ func (a *analyzer) checkCall(call *parser.CallExpr) {
 	if a.idx != nil {
 		for _, s := range a.idx.Lookup(name) {
 			if s.Kind == symbols.KindFunction {
-				expected := len(s.Params)
+				maxArgs := len(s.Params)
+				minArgs := s.RequiredArgs
 				actual := len(call.Args)
-				if actual > expected {
-					a.warn(call.Pos, fmt.Sprintf("'%s' expects at most %d arguments, got %d", name, expected, actual))
+				if actual > maxArgs {
+					a.warn(call.Pos, fmt.Sprintf("'%s' expects at most %d arguments, got %d", name, maxArgs, actual))
+				} else if actual < minArgs {
+					a.warn(call.Pos, fmt.Sprintf("'%s' expects at least %d arguments, got %d", name, minArgs, actual))
 				}
 				return
 			}

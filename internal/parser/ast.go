@@ -25,10 +25,11 @@ func (p *Program) nodePos() Pos {
 
 // FunctionDef represents a def...end block.
 type FunctionDef struct {
-	Pos    Pos
-	Name   string
-	Params []string
-	Body   []Node
+	Pos          Pos
+	Name         string
+	Params       []string
+	RequiredArgs int // number of params without default values
+	Body         []Node
 }
 
 func (f *FunctionDef) nodePos() Pos { return f.Pos }

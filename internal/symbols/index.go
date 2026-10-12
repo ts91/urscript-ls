@@ -24,8 +24,9 @@ type Symbol struct {
 	EndPos parser.Pos // end of the definition block (for functions/threads)
 
 	// Function-specific fields.
-	Params []string
-	Doc    string // preceding comment block, if any
+	Params       []string
+	RequiredArgs int    // number of params without default values
+	Doc          string // preceding comment block, if any
 }
 
 // Index holds all symbols extracted from a single document.
@@ -107,12 +108,13 @@ func (b *builder) walkNode(n parser.Node) {
 			endPos = lastStmtPos(node.Body)
 		}
 		b.idx.add(Symbol{
-			Name:   node.Name,
-			Kind:   KindFunction,
-			Pos:    node.Pos,
-			EndPos: endPos,
-			Params: node.Params,
-			Doc:    extractDoc(b.source, node.Pos.Line),
+			Name:         node.Name,
+			Kind:         KindFunction,
+			Pos:          node.Pos,
+			EndPos:       endPos,
+			Params:       node.Params,
+			RequiredArgs: node.RequiredArgs,
+			Doc:          extractDoc(b.source, node.Pos.Line),
 		})
 		for _, p := range node.Params {
 			b.idx.add(Symbol{
