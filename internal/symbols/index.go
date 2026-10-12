@@ -223,10 +223,17 @@ func extractBlockDoc(lines []string, defLine int) string {
 		return ""
 	}
 
-	// Collect the content between the delimiters.
+	// Collect the content between the delimiters, stripping leading "# " or "#".
 	var docLines []string
 	for i := openIdx + 1; i < closeIdx; i++ {
-		docLines = append(docLines, trimSpace(lines[i]))
+		line := trimSpace(lines[i])
+		if len(line) > 0 && line[0] == '#' {
+			line = line[1:]
+			if len(line) > 0 && line[0] == ' ' {
+				line = line[1:]
+			}
+		}
+		docLines = append(docLines, line)
 	}
 
 	result := ""
