@@ -47,8 +47,8 @@ func TestInitialize(t *testing.T) {
 	}
 
 	ver, ok := info.Version.Get()
-	if !ok || ver != "0.1.0" {
-		t.Errorf("expected version '0.1.0', got %q (ok=%v)", ver, ok)
+	if !ok || ver != "0.2.0" {
+		t.Errorf("expected version '0.2.0', got %q (ok=%v)", ver, ok)
 	}
 
 	srvConn.Close()

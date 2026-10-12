@@ -102,7 +102,7 @@ func (s *Server) Initialize(_ context.Context, params *protocol.InitializeParams
 		},
 		ServerInfo: protocol.ServerInfo{
 			Name:    "urscript-ls",
-			Version: protocol.NewOptional[string]("0.1.0"),
+			Version: protocol.NewOptional[string]("0.2.0"),
 		},
 	}, nil
 }
