@@ -1,7 +1,4 @@
-gripper_open = 0.08
-gripper_closed = 0.0
 max_speed = 1.5
 safe_height = 0.15
-pick_approach_offset = 0.05
-place_approach_offset = 0.05
 cycle_count = 10
+default_grip_force = 20.0

@@ -76,7 +76,7 @@ def main():
       textmsg("Cycle ", cycle)
     end
 
-    local grip = clamp(grip_force, 5.0, 40.0)
+    local grip = clamp(default_grip_force, 5.0, 40.0)
     pick(pick_pose, grip)
     place(place_pose)
 
