@@ -24,6 +24,7 @@ type Server struct {
 	protocol.UnimplementedServer
 
 	mu       sync.Mutex
+	version  string
 	client   protocol.Client
 	store    *document.Store
 	registry *builtins.Registry
@@ -31,8 +32,9 @@ type Server struct {
 }
 
 // NewServer creates a new URScript language server.
-func NewServer() *Server {
+func NewServer(version string) *Server {
 	return &Server{
+		version:  version,
 		store:    document.NewStore(),
 		registry: builtins.NewRegistry(),
 	}
@@ -102,7 +104,7 @@ func (s *Server) Initialize(_ context.Context, params *protocol.InitializeParams
 		},
 		ServerInfo: protocol.ServerInfo{
 			Name:    "urscript-ls",
-			Version: protocol.NewOptional[string]("0.2.0"),
+			Version: protocol.NewOptional[string](s.version),
 		},
 	}, nil
 }

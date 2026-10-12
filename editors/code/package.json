@@ -2,7 +2,7 @@
   "name": "urscript-ls",
   "displayName": "URScript Language Server",
   "description": "URScript language support with full LSP features",
-  "version": "0.2.0",
+  "version": "0.0.0-dev",
   "publisher": "ts91",
   "license": "MIT",
   "icon": "icon.png",

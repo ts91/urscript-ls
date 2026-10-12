@@ -13,7 +13,7 @@ func setupServer(t *testing.T) (context.Context, protocol.Server, protocol.Clien
 	t.Helper()
 
 	left, right := jsonrpc2.NewChannelStreamPair(16)
-	srv := NewServer()
+	srv := NewServer("test")
 
 	srvCtx, _, client := protocol.NewServer(context.Background(), srv, left)
 	srv.SetClient(client)
@@ -26,7 +26,7 @@ func setupServer(t *testing.T) (context.Context, protocol.Server, protocol.Clien
 
 func TestInitialize(t *testing.T) {
 	left, right := jsonrpc2.NewChannelStreamPair(16)
-	srv := NewServer()
+	srv := NewServer("test")
 
 	ctx := context.Background()
 	ctx, srvConn, client := protocol.NewServer(ctx, srv, left)
@@ -47,8 +47,8 @@ func TestInitialize(t *testing.T) {
 	}
 
 	ver, ok := info.Version.Get()
-	if !ok || ver != "0.2.0" {
-		t.Errorf("expected version '0.2.0', got %q (ok=%v)", ver, ok)
+	if !ok || ver != "test" {
+		t.Errorf("expected version 'test', got %q (ok=%v)", ver, ok)
 	}
 
 	srvConn.Close()
@@ -56,7 +56,7 @@ func TestInitialize(t *testing.T) {
 }
 
 func TestDidOpenPublishesDiagnostics(t *testing.T) {
-	srv := NewServer()
+	srv := NewServer("test")
 	ctx := context.Background()
 
 	diags := make(chan *protocol.PublishDiagnosticsParams, 1)
@@ -101,7 +101,7 @@ func TestDidOpenPublishesDiagnostics(t *testing.T) {
 }
 
 func TestHover(t *testing.T) {
-	srv := NewServer()
+	srv := NewServer("test")
 	ctx := context.Background()
 
 	testURI := uri.File("/tmp/test.urscript")
@@ -129,7 +129,7 @@ func TestHover(t *testing.T) {
 }
 
 func TestHoverUnknownSymbol(t *testing.T) {
-	srv := NewServer()
+	srv := NewServer("test")
 	ctx := context.Background()
 
 	testURI := uri.File("/tmp/test.urscript")

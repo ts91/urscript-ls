@@ -34,7 +34,7 @@ func main() {
 	ctx := context.Background()
 
 	stream := jsonrpc2.NewStream(rwc{os.Stdin, lspOut})
-	srv := server.NewServer()
+	srv := server.NewServer(version)
 
 	ctx, conn, client := protocol.NewServer(ctx, srv, stream)
 	srv.SetClient(client)
