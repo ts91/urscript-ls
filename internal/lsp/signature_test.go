@@ -28,7 +28,11 @@ func TestSignatureHelpBuiltin(t *testing.T) {
 		t.Errorf("expected movej in label, got: %s", sig.Label)
 	}
 	if sig.Documentation == nil {
-		t.Error("expected documentation on signature")
+		t.Fatal("expected documentation on signature")
+	}
+	sigDoc := sig.Documentation.(*protocol.MarkupContent).Value
+	if strings.Contains(sigDoc, "@param") && !strings.Contains(sigDoc, "**@param**") {
+		t.Errorf("expected formatted @param in signature doc, got: %s", sigDoc)
 	}
 	activeParam, ok := result.ActiveParameter.Get()
 	if !ok {

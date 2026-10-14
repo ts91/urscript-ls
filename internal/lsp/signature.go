@@ -79,7 +79,7 @@ func SignatureHelp(content string, pos protocol.Position, registry *builtins.Reg
 	if doc != "" {
 		sigInfo.Documentation = &protocol.MarkupContent{
 			Kind:  protocol.MarkupKindMarkdown,
-			Value: doc,
+			Value: formatDoc(doc),
 		}
 	}
 
