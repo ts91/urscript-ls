@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
@@ -247,7 +248,20 @@ func (s *Server) SignatureHelp(_ context.Context, params *protocol.SignatureHelp
 		return nil, nil
 	}
 	idx := s.mergedIndex(params.TextDocument.URI)
-	return lsp.SignatureHelp(content, params.Position, s.registry, idx), nil
+	result := lsp.SignatureHelp(content, params.Position, s.registry, idx)
+
+	// Async dispatch may cause this request to arrive before didChange has
+	// updated the store. Retry once after a short wait when the request was
+	// triggered by a character but the first attempt found nothing.
+	if result == nil && params.Context.TriggerCharacter != nil {
+		time.Sleep(10 * time.Millisecond)
+		if updated, ok := s.store.Get(params.TextDocument.URI); ok && updated != content {
+			idx = s.mergedIndex(params.TextDocument.URI)
+			result = lsp.SignatureHelp(updated, params.Position, s.registry, idx)
+		}
+	}
+
+	return result, nil
 }
 
 // DocumentSymbol returns the symbol outline for a document.

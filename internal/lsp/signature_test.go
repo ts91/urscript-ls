@@ -165,3 +165,39 @@ func TestExtractParamDocsEmpty(t *testing.T) {
 		t.Errorf("expected nil for empty doc, got: %v", m)
 	}
 }
+
+func TestSignatureHelpMultilineCall(t *testing.T) {
+	src := "movej(q1,\n  "
+	reg := builtins.NewRegistry()
+	pos := protocol.Position{Line: 1, Character: 2}
+
+	result := SignatureHelp(src, pos, reg, nil)
+	if result == nil {
+		t.Fatal("expected signature help for multiline call")
+	}
+	sig := result.Signatures[0]
+	if !strings.Contains(sig.Label, "movej") {
+		t.Errorf("expected movej in label, got: %s", sig.Label)
+	}
+	activeParam, ok := result.ActiveParameter.Get()
+	if !ok {
+		t.Fatal("expected active parameter to be set")
+	}
+	if activeParam != 1 {
+		t.Errorf("expected active param 1, got %d", activeParam)
+	}
+}
+
+func TestSignatureHelpIndentedCall(t *testing.T) {
+	src := "def main():\n  movej(q1, "
+	reg := builtins.NewRegistry()
+	pos := protocol.Position{Line: 1, Character: 14}
+
+	result := SignatureHelp(src, pos, reg, nil)
+	if result == nil {
+		t.Fatal("expected signature help for indented call")
+	}
+	if !strings.Contains(result.Signatures[0].Label, "movej") {
+		t.Errorf("expected movej in label, got: %s", result.Signatures[0].Label)
+	}
+}

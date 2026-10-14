@@ -15,18 +15,21 @@ func SignatureHelp(content string, pos protocol.Position, registry *builtins.Reg
 	line := int(pos.Line)
 	col := int(pos.Character)
 
-	lines := strings.Split(content, "\n")
-	if line >= len(lines) {
-		return nil
-	}
-	text := lines[line]
-	if col > len(text) {
-		col = len(text)
+	// Compute byte offset of the cursor so we can feed findCallContext
+	// all text up to the cursor, enabling multiline call support.
+	offset := 0
+	for i, l := range strings.Split(content, "\n") {
+		if i == line {
+			if col > len(l) {
+				col = len(l)
+			}
+			offset += col
+			break
+		}
+		offset += len(l) + 1 // +1 for newline
 	}
 
-	// Walk backwards from cursor to find the function name and count commas
-	// to determine the active parameter.
-	funcName, activeParam := findCallContext(text[:col])
+	funcName, activeParam := findCallContext(content[:offset])
 	if funcName == "" {
 		return nil
 	}
