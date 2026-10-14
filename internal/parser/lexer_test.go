@@ -5,14 +5,14 @@ import (
 )
 
 func TestLexKeywords(t *testing.T) {
-	input := "def end if elif else while return global local True False not and or thread"
+	input := "def end if elif else while return global local True False not and or thread halt"
 	tokens := Lex(input)
 
 	expected := []TokenType{
 		TokenDef, TokenEnd, TokenIf, TokenElif, TokenElse,
 		TokenWhile, TokenReturn, TokenGlobal, TokenLocal,
 		TokenTrue, TokenFalse, TokenNot, TokenAnd, TokenOr, TokenThread,
-		TokenEOF,
+		TokenHalt, TokenEOF,
 	}
 
 	if len(tokens) != len(expected) {

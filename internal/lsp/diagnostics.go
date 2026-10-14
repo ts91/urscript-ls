@@ -112,6 +112,8 @@ func (a *analyzer) walkNode(n parser.Node) {
 		if node.Init != nil {
 			a.walkExpr(node.Init)
 		}
+	case *parser.HaltStmt:
+		// Nothing to analyze.
 	}
 }
 

@@ -77,6 +77,8 @@ func inlayWalkNode(n parser.Node, rng protocol.Range, registry *builtins.Registr
 		for _, arg := range node.Args {
 			inlayWalkNode(arg, rng, registry, idx, hints)
 		}
+	case *parser.HaltStmt:
+		// Nothing to walk.
 	}
 }
 

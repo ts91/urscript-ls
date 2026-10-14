@@ -86,7 +86,8 @@ func SemanticTokens(source string, registry *builtins.Registry, idx *symbols.Ind
 		case parser.TokenDef, parser.TokenEnd, parser.TokenIf, parser.TokenElif,
 			parser.TokenElse, parser.TokenWhile, parser.TokenReturn,
 			parser.TokenGlobal, parser.TokenLocal, parser.TokenTrue, parser.TokenFalse,
-			parser.TokenNot, parser.TokenAnd, parser.TokenOr, parser.TokenThread:
+			parser.TokenNot, parser.TokenAnd, parser.TokenOr, parser.TokenThread,
+			parser.TokenHalt:
 			tokenType = ttKeyword
 
 		case parser.TokenIdent:

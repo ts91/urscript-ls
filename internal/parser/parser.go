@@ -90,6 +90,9 @@ func (p *parser) parseStatement() Node {
 		return p.parseWhileStmt()
 	case TokenReturn:
 		return p.parseReturnStmt()
+	case TokenHalt:
+		tok := p.advance()
+		return &HaltStmt{Pos: Pos{Line: tok.Line, Column: tok.Column}}
 	case TokenGlobal:
 		return p.parseGlobalStmt()
 	case TokenLocal:
@@ -612,6 +615,8 @@ func tokenName(tt TokenType) string {
 		return "global"
 	case TokenLocal:
 		return "local"
+	case TokenHalt:
+		return "halt"
 	case TokenLParen:
 		return "("
 	case TokenRParen:

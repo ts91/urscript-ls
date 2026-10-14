@@ -323,3 +323,28 @@ end`
 		t.Errorf("expected name 'main', got %q", fn.Name)
 	}
 }
+
+func TestParseHaltStmt(t *testing.T) {
+	input := `def stop():
+  halt
+end`
+	prog, errs := Parse(input)
+	if len(errs) != 0 {
+		t.Fatalf("expected no errors, got %v", errs)
+	}
+	if len(prog.Stmts) != 1 {
+		t.Fatalf("expected 1 statement, got %d", len(prog.Stmts))
+	}
+
+	fn, ok := prog.Stmts[0].(*FunctionDef)
+	if !ok {
+		t.Fatalf("expected *FunctionDef, got %T", prog.Stmts[0])
+	}
+	if len(fn.Body) != 1 {
+		t.Fatalf("expected 1 body statement, got %d", len(fn.Body))
+	}
+	_, ok = fn.Body[0].(*HaltStmt)
+	if !ok {
+		t.Fatalf("expected *HaltStmt, got %T", fn.Body[0])
+	}
+}

@@ -13,6 +13,7 @@ import (
 var keywords = []string{
 	"def", "end", "if", "elif", "else", "while", "return",
 	"global", "local", "True", "False", "and", "or", "not", "thread",
+	"halt",
 }
 
 // Completions returns completion items for the given document context.

@@ -164,6 +164,13 @@ type ListLit struct {
 
 func (l *ListLit) nodePos() Pos { return l.Pos }
 
+// HaltStmt represents a bare halt statement.
+type HaltStmt struct {
+	Pos Pos
+}
+
+func (h *HaltStmt) nodePos() Pos { return h.Pos }
+
 // ExprStmt wraps an expression used as a statement (e.g. a function call).
 type ExprStmt struct {
 	Expr Node

@@ -35,6 +35,7 @@ const (
 	TokenAnd
 	TokenOr
 	TokenThread
+	TokenHalt
 
 	// Operators
 	TokenAssign    // =
@@ -80,6 +81,7 @@ var keywords = map[string]TokenType{
 	"and":    TokenAnd,
 	"or":     TokenOr,
 	"thread": TokenThread,
+	"halt":   TokenHalt,
 }
 
 // Token represents a single lexical token.
