@@ -55,11 +55,19 @@ func SignatureHelp(content string, pos protocol.Position, registry *builtins.Reg
 		return nil
 	}
 
+	paramDocs := extractParamDocs(doc)
 	paramInfos := make([]protocol.ParameterInformation, len(params))
 	for i, p := range params {
-		paramInfos[i] = protocol.ParameterInformation{
+		pi := protocol.ParameterInformation{
 			Label: protocol.String(p),
 		}
+		if d, ok := paramDocs[p]; ok {
+			pi.Documentation = &protocol.MarkupContent{
+				Kind:  protocol.MarkupKindMarkdown,
+				Value: d,
+			}
+		}
+		paramInfos[i] = pi
 	}
 
 	activeSig := uint32(0)
@@ -137,5 +145,36 @@ func extractIdentBefore(text string, pos int) string {
 
 func isIdentByte(ch byte) bool {
 	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_'
+}
+
+// extractParamDocs parses @param lines from a doc string and returns a map
+// from parameter name to a formatted markdown description.
+func extractParamDocs(doc string) map[string]string {
+	if doc == "" {
+		return nil
+	}
+	result := make(map[string]string)
+	for _, line := range strings.Split(doc, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "@param ") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 3 {
+			continue
+		}
+		name := fields[1]
+		typ := fields[2]
+		var desc string
+		if len(fields) >= 4 {
+			desc = strings.Join(fields[3:], " ")
+		}
+		if desc != "" {
+			result[name] = fmt.Sprintf("`%s` — %s", typ, desc)
+		} else {
+			result[name] = fmt.Sprintf("`%s`", typ)
+		}
+	}
+	return result
 }
 
