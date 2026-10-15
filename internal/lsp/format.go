@@ -79,12 +79,23 @@ func fmtIsOpener(line string) bool {
 	if fmtIsMidBlock(line) {
 		return false
 	}
-	for _, opener := range blockOpeners {
-		if strings.HasPrefix(line, opener) {
-			return true
-		}
+	return fmtLineStartsBlock(line, "def") ||
+		fmtLineStartsBlock(line, "thread") ||
+		fmtLineStartsBlock(line, "if") ||
+		fmtLineStartsBlock(line, "while")
+}
+
+// fmtLineStartsBlock reports whether line begins with keyword followed by
+// space or '(', e.g. "if(" and "while (True):".
+func fmtLineStartsBlock(line, keyword string) bool {
+	if !strings.HasPrefix(line, keyword) {
+		return false
 	}
-	return false
+	rest := line[len(keyword):]
+	if rest == "" {
+		return false
+	}
+	return rest[0] == ' ' || rest[0] == '('
 }
 
 func fmtIsCloser(line string) bool {

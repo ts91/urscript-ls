@@ -50,12 +50,7 @@ func OnTypeFormat(content string, pos protocol.Position, ch string, opts protoco
 }
 
 func onTypeIsOpener(line string) bool {
-	for _, opener := range blockOpeners {
-		if strings.HasPrefix(line, opener) {
-			return true
-		}
-	}
-	return false
+	return fmtIsOpener(line)
 }
 
 func leadingWhitespace(line string) string {
