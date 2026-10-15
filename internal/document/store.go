@@ -1,6 +1,7 @@
 package document
 
 import (
+	"path/filepath"
 	"sync"
 
 	"go.lsp.dev/uri"
@@ -8,11 +9,24 @@ import (
 	"github.com/ts91/urscript-ls/internal/symbols"
 )
 
+// NormalizeURI returns a canonical file URI for map keys and cross-file lookup.
+func NormalizeURI(u uri.URI) uri.URI {
+	if u == "" {
+		return u
+	}
+	path := filepath.Clean(u.Path())
+	if path == "" {
+		return u
+	}
+	return uri.File(path)
+}
+
 // entry holds a document's content and its symbol index.
 type entry struct {
 	content     string
 	index       *symbols.Index
 	editorOpen  bool           // true if currently open in the editor
+	clientURI   uri.URI        // URI the editor used (for PublishDiagnostics)
 	diskContent string         // content from workspace scan (preserved across editor close)
 	diskIndex   *symbols.Index // index from workspace scan
 }
@@ -32,6 +46,8 @@ func NewStore() *Store {
 
 // Open stores a newly opened document (from the editor).
 func (s *Store) Open(u uri.URI, content string) {
+	clientURI := u
+	u = NormalizeURI(u)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if e, ok := s.docs[u]; ok {
@@ -39,13 +55,15 @@ func (s *Store) Open(u uri.URI, content string) {
 		e.content = content
 		e.index = nil
 		e.editorOpen = true
+		e.clientURI = clientURI
 	} else {
-		s.docs[u] = &entry{content: content, editorOpen: true}
+		s.docs[u] = &entry{content: content, editorOpen: true, clientURI: clientURI}
 	}
 }
 
 // OpenFromDisk stores a document discovered by the workspace scanner.
 func (s *Store) OpenFromDisk(u uri.URI, content string) {
+	u = NormalizeURI(u)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := s.docs[u]; ok {
@@ -59,6 +77,7 @@ func (s *Store) OpenFromDisk(u uri.URI, content string) {
 
 // Update replaces the content of an open document.
 func (s *Store) Update(u uri.URI, content string) {
+	u = NormalizeURI(u)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if e, ok := s.docs[u]; ok {
@@ -73,6 +92,7 @@ func (s *Store) Update(u uri.URI, content string) {
 // from disk (workspace scan), it reverts to the disk content and index
 // rather than being deleted.
 func (s *Store) Close(u uri.URI) {
+	u = NormalizeURI(u)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	e, ok := s.docs[u]
@@ -91,6 +111,7 @@ func (s *Store) Close(u uri.URI) {
 
 // Get returns the content of a document and whether it exists.
 func (s *Store) Get(u uri.URI) (string, bool) {
+	u = NormalizeURI(u)
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	e, ok := s.docs[u]
@@ -102,6 +123,7 @@ func (s *Store) Get(u uri.URI) (string, bool) {
 
 // SetIndex stores the symbol index for a document.
 func (s *Store) SetIndex(u uri.URI, idx *symbols.Index) {
+	u = NormalizeURI(u)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if e, ok := s.docs[u]; ok {
@@ -115,6 +137,7 @@ func (s *Store) SetIndex(u uri.URI, idx *symbols.Index) {
 
 // GetIndex returns the symbol index for a document, if available.
 func (s *Store) GetIndex(u uri.URI) *symbols.Index {
+	u = NormalizeURI(u)
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if e, ok := s.docs[u]; ok {
@@ -156,4 +179,29 @@ func (s *Store) AllURIs() []uri.URI {
 		uris = append(uris, u)
 	}
 	return uris
+}
+
+// EditorOpenURIs returns URIs of documents currently open in the editor.
+func (s *Store) EditorOpenURIs() []uri.URI {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	uris := make([]uri.URI, 0, len(s.docs))
+	for u, e := range s.docs {
+		if e.editorOpen {
+			uris = append(uris, u)
+		}
+	}
+	return uris
+}
+
+// ClientURI returns the URI to use when publishing LSP notifications for a
+// document (the editor's URI, not necessarily the normalized store key).
+func (s *Store) ClientURI(u uri.URI) uri.URI {
+	u = NormalizeURI(u)
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if e, ok := s.docs[u]; ok && e.clientURI != "" {
+		return e.clientURI
+	}
+	return u
 }

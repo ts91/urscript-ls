@@ -51,6 +51,25 @@ my_func()`
 	}
 }
 
+func TestCrossFileDefinedFunctionNoWarning(t *testing.T) {
+	mainSrc := "other_func()\n"
+	utilsSrc := `def other_func():
+end
+`
+	mainProg, _ := parser.Parse(mainSrc)
+	utilsProg, _ := parser.Parse(utilsSrc)
+	mainIdx := symbols.Build(mainProg, mainSrc)
+	utilsIdx := symbols.Build(utilsProg, utilsSrc)
+	merged := symbols.Merge(mainIdx, utilsIdx)
+	reg := builtins.NewRegistry()
+	diags := Analyze(mainProg, merged, reg)
+	for _, d := range diags {
+		if strings.Contains(msgText(d), "not defined") {
+			t.Errorf("unexpected 'not defined' for cross-file call: %s", msgText(d))
+		}
+	}
+}
+
 func TestBuiltinNoWarning(t *testing.T) {
 	diags := analyze("movej(q1)")
 	for _, d := range diags {

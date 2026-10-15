@@ -2,11 +2,17 @@ package server
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"go.lsp.dev/jsonrpc2"
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
+
+	"github.com/ts91/urscript-ls/internal/parser"
+	"github.com/ts91/urscript-ls/internal/symbols"
 )
 
 func setupServer(t *testing.T) (context.Context, protocol.Server, protocol.Client) {
@@ -53,6 +59,27 @@ func TestInitialize(t *testing.T) {
 
 	srvConn.Close()
 	clientConn.Close()
+}
+
+func TestPublishDiagnosticsUsesClientURI(t *testing.T) {
+	srv := NewServer("test")
+	ctx := context.Background()
+
+	diags := make(chan *protocol.PublishDiagnosticsParams, 1)
+	srv.SetClient(&mockClient{diagsCh: diags})
+
+	// Editor URI with a distinct string form from the normalized store key.
+	clientURI := uri.URI("file:///tmp/client-alias.urscript")
+	storeKey := uri.File("/tmp/client-alias.urscript")
+	srv.store.Open(clientURI, "unknown_fn()\n")
+
+	if err := srv.publishDiagnostics(ctx, storeKey); err != nil {
+		t.Fatalf("publishDiagnostics: %v", err)
+	}
+	params := <-diags
+	if params.URI != clientURI {
+		t.Errorf("expected publish URI %q, got %q", clientURI, params.URI)
+	}
 }
 
 func TestDidOpenPublishesDiagnostics(t *testing.T) {
@@ -126,6 +153,110 @@ func TestHover(t *testing.T) {
 	if mc.Kind != protocol.MarkupKindMarkdown {
 		t.Errorf("expected markdown, got %v", mc.Kind)
 	}
+}
+
+func TestScanWorkspaceRepublishExamples(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", "examples"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mainPath := filepath.Join(root, "main.script")
+	mainData, err := os.ReadFile(mainPath)
+	if err != nil {
+		t.Skipf("examples/main.script: %v", err)
+	}
+
+	srv := NewServer("test")
+	srv.roots = []string{root}
+	ctx := context.Background()
+
+	diags := make(chan *protocol.PublishDiagnosticsParams, 16)
+	srv.SetClient(&mockClient{diagsCh: diags})
+
+	mainURI := uri.File(mainPath)
+	srv.store.Open(mainURI, string(mainData))
+
+	if err := srv.publishDiagnostics(ctx, mainURI); err != nil {
+		t.Fatalf("publishDiagnostics: %v", err)
+	}
+	params := <-diags
+	if !diagIsNotDefined(params.Diagnostics, "compute_offset") {
+		t.Fatal("expected stale 'not defined' for compute_offset before scan")
+	}
+
+	srv.scanWorkspace()
+
+	for {
+		params = <-diags
+		if params.URI != mainURI {
+			continue
+		}
+		if diagIsNotDefined(params.Diagnostics, "compute_offset") {
+			t.Error("expected compute_offset 'not defined' cleared after workspace scan")
+		}
+		break
+	}
+}
+
+func TestRepublishDiagnosticsAfterCrossFileIndex(t *testing.T) {
+	srv := NewServer("test")
+	ctx := context.Background()
+
+	diags := make(chan *protocol.PublishDiagnosticsParams, 4)
+	mc := &mockClient{diagsCh: diags}
+	srv.SetClient(mc)
+
+	mainURI := uri.File("/tmp/main.urscript")
+	utilsURI := uri.File("/tmp/utils.urscript")
+
+	srv.store.Open(mainURI, "other_func()\n")
+
+	if err := srv.publishDiagnostics(ctx, mainURI); err != nil {
+		t.Fatalf("publishDiagnostics: %v", err)
+	}
+	params := <-diags
+	if !diagContains(params.Diagnostics, "not defined") {
+		t.Fatal("expected 'not defined' before cross-file index is available")
+	}
+
+	utilsSrc := "def other_func():\nend\n"
+	srv.store.OpenFromDisk(utilsURI, utilsSrc)
+	utilsProg, _ := parser.Parse(utilsSrc)
+	srv.store.SetIndex(utilsURI, symbols.Build(utilsProg, utilsSrc))
+
+	if err := srv.republishOpenEditorDiagnostics(ctx); err != nil {
+		t.Fatalf("republishOpenEditorDiagnostics: %v", err)
+	}
+
+	for {
+		params = <-diags
+		if params.URI != mainURI {
+			continue
+		}
+		if diagContains(params.Diagnostics, "not defined") {
+			t.Errorf("expected no 'not defined' after republish, got: %v", params.Diagnostics)
+		}
+		break
+	}
+}
+
+func diagContains(diags []protocol.Diagnostic, substr string) bool {
+	for _, d := range diags {
+		if s, ok := d.Message.(protocol.String); ok && strings.Contains(string(s), substr) {
+			return true
+		}
+	}
+	return false
+}
+
+func diagIsNotDefined(diags []protocol.Diagnostic, name string) bool {
+	want := "'" + name + "' is not defined"
+	for _, d := range diags {
+		if s, ok := d.Message.(protocol.String); ok && string(s) == want {
+			return true
+		}
+	}
+	return false
 }
 
 func TestHoverUnknownSymbol(t *testing.T) {

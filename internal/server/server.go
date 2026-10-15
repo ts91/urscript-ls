@@ -112,6 +112,8 @@ func (s *Server) Initialize(_ context.Context, params *protocol.InitializeParams
 
 // Initialized is called after the client confirms initialization.
 func (s *Server) Initialized(ctx context.Context, _ *protocol.InitializedParams) error {
+	// Detached context: the Initialized request context is cancelled when this
+	// handler returns, which would prevent post-scan diagnostic republish.
 	go s.scanWorkspace()
 
 	// Register file watcher for workspace .script/.urscript/.variables files.
@@ -162,6 +164,9 @@ func (s *Server) scanWorkspace() {
 		})
 	}
 	log.Printf("workspace scan complete: %d files indexed", len(s.store.AllURIs()))
+	if err := s.republishOpenEditorDiagnostics(context.Background()); err != nil {
+		log.Printf("republish diagnostics after workspace scan: %v", err)
+	}
 }
 
 // Shutdown is called before Exit.
@@ -177,7 +182,7 @@ func (s *Server) Exit(_ context.Context) error {
 // DidOpen handles opening a text document.
 func (s *Server) DidOpen(ctx context.Context, params *protocol.DidOpenTextDocumentParams) error {
 	s.store.Open(params.TextDocument.URI, params.TextDocument.Text)
-	return s.publishDiagnostics(ctx, params.TextDocument.URI)
+	return s.republishOpenEditorDiagnostics(ctx)
 }
 
 // DidChange handles text document changes (full or incremental sync).
@@ -287,8 +292,9 @@ func (s *Server) Definition(_ context.Context, params *protocol.DefinitionParams
 	if word == "" {
 		return nil, nil
 	}
+	current := document.NormalizeURI(params.TextDocument.URI)
 	for docURI, fileIdx := range s.store.AllIndices() {
-		if docURI == params.TextDocument.URI {
+		if docURI == current {
 			continue
 		}
 		for _, sym := range fileIdx.Lookup(word) {
@@ -416,7 +422,7 @@ func (s *Server) DidChangeWatchedFiles(ctx context.Context, params *protocol.Did
 			s.store.Close(event.URI)
 		}
 	}
-	return nil
+	return s.republishOpenEditorDiagnostics(ctx)
 }
 
 // InlayHint returns parameter name hints at call sites.
@@ -494,6 +500,7 @@ func (s *Server) Formatting(_ context.Context, params *protocol.DocumentFormatti
 // mergedIndex returns a symbol index combining the current file's index
 // with indices from all other workspace files.
 func (s *Server) mergedIndex(docURI uri.URI) *symbols.Index {
+	docURI = document.NormalizeURI(docURI)
 	primary := s.store.GetIndex(docURI)
 	allIdx := s.store.AllIndices()
 	var others []*symbols.Index
@@ -538,6 +545,18 @@ func isIdentRune(r rune) bool {
 	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_'
 }
 
+// republishOpenEditorDiagnostics refreshes diagnostics for every document
+// open in the editor. Call after the workspace index changes so cross-file
+// symbols are reflected without requiring an edit.
+func (s *Server) republishOpenEditorDiagnostics(ctx context.Context) error {
+	for _, docURI := range s.store.EditorOpenURIs() {
+		if err := s.publishDiagnostics(ctx, docURI); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // publishDiagnostics parses the document and sends diagnostics to the client.
 func (s *Server) publishDiagnostics(ctx context.Context, docURI uri.URI) error {
 	content, ok := s.store.Get(docURI)
@@ -571,7 +590,7 @@ func (s *Server) publishDiagnostics(ctx context.Context, docURI uri.URI) error {
 		return nil
 	}
 	return c.PublishDiagnostics(ctx, &protocol.PublishDiagnosticsParams{
-		URI:         docURI,
+		URI:         s.store.ClientURI(docURI),
 		Diagnostics: diags,
 	})
 }
