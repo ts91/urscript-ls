@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1
+
+### Fixed
+- Code folding missing or ending too early for nested `if` / `while` / `thread` blocks
+- Code folding not shown when branch bodies contain only comments
+- Document formatting and indentation for `if(` and `while(` without a space after the keyword
+
 ## 0.2.0
 
 ### Added
