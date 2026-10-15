@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.2
+
+### Fixed
+- Cross-file diagnostics not updating after another file in the workspace is indexed
+
 ## 0.3.1
 
 ### Fixed
