@@ -7,6 +7,17 @@
 - Code folding not shown when branch bodies contain only comments
 - Document formatting and indentation for `if(` and `while(` without a space after the keyword
 
+## 0.3.0
+
+### Added
+- Per-parameter documentation in signature help (from `@param` tags on builtins)
+- `halt` as a keyword (highlighting, completion, and no false “not defined” diagnostics)
+
+### Fixed
+- Signature help race where stale buffer content could hide help after edits
+- Signature help on multiline function calls
+- Signature help documentation formatting (markdown aligned with hover)
+
 ## 0.2.0
 
 ### Added
