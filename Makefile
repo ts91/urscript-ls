@@ -5,7 +5,7 @@ VERSION ?= dev
 TARGETS := linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64 windows-arm64
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
-.PHONY: build test vet clean install vscode-ext release-local
+.PHONY: build test vet clean vscode-ext release-local
 
 build:
 	go build -ldflags="$(LDFLAGS)" -o $(BINARY) $(CMD)
@@ -21,9 +21,6 @@ clean:
 	rm -rf dist/
 	rm -f editors/code/*.vsix
 	rm -rf editors/code/server/
-
-install:
-	go install -ldflags="$(LDFLAGS)" $(CMD)
 
 vscode-ext:
 	cd editors/code && npm install && npm run compile
