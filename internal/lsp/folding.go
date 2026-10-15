@@ -25,23 +25,15 @@ func foldingWalkStmts(stmts []parser.Node, ranges *[]protocol.FoldingRange) {
 func foldingWalkNode(n parser.Node, ranges *[]protocol.FoldingRange) {
 	switch node := n.(type) {
 	case *parser.FunctionDef:
-		addBlockRange(node.Pos, node.Body, ranges)
+		addBlockFold(node.Pos, node.End, ranges)
 		foldingWalkStmts(node.Body, ranges)
 
 	case *parser.ThreadDef:
-		addBlockRange(node.Pos, node.Body, ranges)
+		addBlockFold(node.Pos, node.End, ranges)
 		foldingWalkStmts(node.Body, ranges)
 
 	case *parser.IfStmt:
-		// Fold the entire if/elif/else/end as one range.
-		endLine := findEndLine(node.Pos, node.Body, node.ElseIfs, node.Else)
-		if endLine > node.Pos.Line {
-			*ranges = append(*ranges, protocol.FoldingRange{
-				StartLine: uint32(node.Pos.Line),
-				EndLine:   uint32(endLine),
-				Kind:      protocol.FoldingRangeKindRegion,
-			})
-		}
+		addBlockFold(node.Pos, node.End, ranges)
 		foldingWalkStmts(node.Body, ranges)
 		for _, elif := range node.ElseIfs {
 			foldingWalkStmts(elif.Body, ranges)
@@ -49,45 +41,19 @@ func foldingWalkNode(n parser.Node, ranges *[]protocol.FoldingRange) {
 		foldingWalkStmts(node.Else, ranges)
 
 	case *parser.WhileStmt:
-		addBlockRange(node.Pos, node.Body, ranges)
+		addBlockFold(node.Pos, node.End, ranges)
 		foldingWalkStmts(node.Body, ranges)
-
 	}
 }
 
-func addBlockRange(pos parser.Pos, body []parser.Node, ranges *[]protocol.FoldingRange) {
-	if len(body) == 0 {
-		return
-	}
-	last := parser.NodePos(body[len(body)-1])
-	// The "end" keyword is on the line after the last statement (approximately).
-	// We fold from the opening line to the end line.
-	endLine := last.Line + 1
-	if endLine > pos.Line {
+func addBlockFold(start, end parser.Pos, ranges *[]protocol.FoldingRange) {
+	if end.Line > start.Line {
 		*ranges = append(*ranges, protocol.FoldingRange{
-			StartLine: uint32(pos.Line),
-			EndLine:   uint32(endLine),
+			StartLine: uint32(start.Line),
+			EndLine:   uint32(end.Line),
 			Kind:      protocol.FoldingRangeKindRegion,
 		})
 	}
-}
-
-func findEndLine(pos parser.Pos, body []parser.Node, elseIfs []parser.ElseIfClause, elseBody []parser.Node) int {
-	endLine := pos.Line
-	if len(elseBody) > 0 {
-		last := parser.NodePos(elseBody[len(elseBody)-1])
-		endLine = last.Line + 1
-	} else if len(elseIfs) > 0 {
-		lastElif := elseIfs[len(elseIfs)-1]
-		if len(lastElif.Body) > 0 {
-			last := parser.NodePos(lastElif.Body[len(lastElif.Body)-1])
-			endLine = last.Line + 1
-		}
-	} else if len(body) > 0 {
-		last := parser.NodePos(body[len(body)-1])
-		endLine = last.Line + 1
-	}
-	return endLine
 }
 
 func commentRanges(source string) []protocol.FoldingRange {
