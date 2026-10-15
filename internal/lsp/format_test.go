@@ -116,3 +116,29 @@ func TestFormatWhile(t *testing.T) {
 		t.Errorf("expected:\n%s\ngot:\n%s", expected, edits[0].NewText)
 	}
 }
+
+func TestFormatIfNoSpaceBeforeParen(t *testing.T) {
+	input := "if (server.get_beginning() == 1):\nif(bypass == 0):\ndo_check = True\nend\nend\n"
+	expected := "if (server.get_beginning() == 1):\n  if(bypass == 0):\n    do_check = True\n  end\nend\n"
+
+	edits := Format(input, defaultOpts)
+	if len(edits) == 0 {
+		t.Fatal("expected edits")
+	}
+	if edits[0].NewText != expected {
+		t.Errorf("expected:\n%s\ngot:\n%s", expected, edits[0].NewText)
+	}
+}
+
+func TestFormatWhileWithParens(t *testing.T) {
+	input := "thread worker():\nwhile (True):\nsleep(0.1)\nend\nend\n"
+	expected := "thread worker():\n  while (True):\n    sleep(0.1)\n  end\nend\n"
+
+	edits := Format(input, defaultOpts)
+	if len(edits) == 0 {
+		t.Fatal("expected edits")
+	}
+	if edits[0].NewText != expected {
+		t.Errorf("expected:\n%s\ngot:\n%s", expected, edits[0].NewText)
+	}
+}
