@@ -1,0 +1,38 @@
+###
+# Folding and document-format regression showcase.
+#
+# Before fixes: missing or short folds on nested blocks, comment-only
+# branches, thread/while; format did not indent if(bypass == 0):.
+#
+# Verify folding: region chevrons on each if/while/thread through its end.
+# Verify format: Format Document — section bodies indent correctly.
+###
+
+# --- 1: if with calls and or (no outer parens) ---
+if get_tool_analog_in(0) < 2.9 or get_tool_analog_in(0) > 3.6:
+fold_me = True
+end
+
+# --- 2: nested if, comment-only branch bodies ---
+if (robot_type == ROBOT_TYPE_UR10):
+if (joint == 1):
+# Shoulder acceleration = reduced_size4_acceleration
+elif (joint == 2):
+# Elbow acceleration = reduced_size3_acceleration
+end
+end
+
+# --- 3: thread + while (True) ---
+thread Thread_1():
+while (True):
+sleep(0.1)
+myur_prod_test_time = floor(timer_sec/60)
+end
+end
+
+# --- 4: nested if, inner if( no space — format + fold ---
+if (server.get_beginning() == 1):
+if(bypass == 0):
+do_check = True
+end
+end
