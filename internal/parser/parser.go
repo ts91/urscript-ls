@@ -116,10 +116,13 @@ func (p *parser) parseFunctionDef() Node {
 	p.skipNewlines()
 
 	body := p.parseBlock(TokenEnd)
-	p.expect(TokenEnd)
+	endTok := p.expect(TokenEnd)
 	p.skipNewlines()
 
-	return &FunctionDef{Pos: pos, Name: name, Params: params, RequiredArgs: requiredArgs, Body: body}
+	return &FunctionDef{
+		Pos: pos, End: Pos{Line: endTok.Line, Column: endTok.Column},
+		Name: name, Params: params, RequiredArgs: requiredArgs, Body: body,
+	}
 }
 
 func (p *parser) parseThreadDef() Node {
@@ -135,10 +138,13 @@ func (p *parser) parseThreadDef() Node {
 	p.skipNewlines()
 
 	body := p.parseBlock(TokenEnd)
-	p.expect(TokenEnd)
+	endTok := p.expect(TokenEnd)
 	p.skipNewlines()
 
-	return &ThreadDef{Pos: pos, Name: name, Body: body}
+	return &ThreadDef{
+		Pos: pos, End: Pos{Line: endTok.Line, Column: endTok.Column},
+		Name: name, Body: body,
+	}
 }
 
 func (p *parser) parseParamList() (params []string, requiredArgs int) {
@@ -227,10 +233,13 @@ func (p *parser) parseIfStmt() Node {
 		elseBody = p.parseBlock(TokenEnd)
 	}
 
-	p.expect(TokenEnd)
+	endTok := p.expect(TokenEnd)
 	p.skipNewlines()
 
-	return &IfStmt{Pos: pos, Condition: cond, Body: body, ElseIfs: elseIfs, Else: elseBody}
+	return &IfStmt{
+		Pos: pos, End: Pos{Line: endTok.Line, Column: endTok.Column},
+		Condition: cond, Body: body, ElseIfs: elseIfs, Else: elseBody,
+	}
 }
 
 func (p *parser) parseWhileStmt() Node {
@@ -242,10 +251,13 @@ func (p *parser) parseWhileStmt() Node {
 	p.skipNewlines()
 
 	body := p.parseBlock(TokenEnd)
-	p.expect(TokenEnd)
+	endTok := p.expect(TokenEnd)
 	p.skipNewlines()
 
-	return &WhileStmt{Pos: pos, Condition: cond, Body: body}
+	return &WhileStmt{
+		Pos: pos, End: Pos{Line: endTok.Line, Column: endTok.Column},
+		Condition: cond, Body: body,
+	}
 }
 
 func (p *parser) parseReturnStmt() Node {

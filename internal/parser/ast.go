@@ -26,6 +26,7 @@ func (p *Program) nodePos() Pos {
 // FunctionDef represents a def...end block.
 type FunctionDef struct {
 	Pos          Pos
+	End          Pos
 	Name         string
 	Params       []string
 	RequiredArgs int // number of params without default values
@@ -37,6 +38,7 @@ func (f *FunctionDef) nodePos() Pos { return f.Pos }
 // ThreadDef represents a thread...end block.
 type ThreadDef struct {
 	Pos  Pos
+	End  Pos
 	Name string
 	Body []Node
 }
@@ -46,6 +48,7 @@ func (t *ThreadDef) nodePos() Pos { return t.Pos }
 // IfStmt represents if/elif/else/end.
 type IfStmt struct {
 	Pos       Pos
+	End       Pos
 	Condition Node
 	Body      []Node
 	ElseIfs   []ElseIfClause
@@ -64,6 +67,7 @@ type ElseIfClause struct {
 // WhileStmt represents while...end.
 type WhileStmt struct {
 	Pos       Pos
+	End       Pos
 	Condition Node
 	Body      []Node
 }
