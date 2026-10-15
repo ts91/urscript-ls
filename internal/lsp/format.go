@@ -6,9 +6,6 @@ import (
 	"go.lsp.dev/protocol"
 )
 
-// URScript block openers and closers for indentation.
-var blockOpeners = []string{"def ", "thread ", "if ", "elif ", "else:", "else ", "while "}
-
 // Format reformats URScript source code and returns a single TextEdit
 // replacing the entire document.
 func Format(content string, opts protocol.FormattingOptions) []protocol.TextEdit {
