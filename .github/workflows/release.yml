@@ -85,12 +85,31 @@ jobs:
     name: Publish Extension
     needs: build-binaries
     runs-on: ubuntu-latest
+    env:
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      OVSX_PAT: ${{ secrets.OVSX_PAT }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+
+      - name: Validate marketplace credentials
+        run: |
+          missing=0
+
+          if [ -z "$VSCE_PAT" ]; then
+            echo "::error::Missing required repository secret VSCE_PAT"
+            missing=1
+          fi
+
+          if [ -z "$OVSX_PAT" ]; then
+            echo "::error::Missing required repository secret OVSX_PAT"
+            missing=1
+          fi
+
+          exit "$missing"
 
       - name: Download all binaries
         uses: actions/download-artifact@v4
@@ -128,16 +147,10 @@ jobs:
 
       - name: Publish to VS Code Marketplace
         working-directory: editors/code
-        if: env.VSCE_PAT != ''
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: npx vsce publish --packagePath *.vsix
 
       - name: Publish to Open VSX
         working-directory: editors/code
-        if: env.OVSX_PAT != ''
-        env:
-          OVSX_PAT: ${{ secrets.OVSX_PAT }}
         run: |
           for vsix in *.vsix; do
             npx ovsx publish "$vsix" -p "$OVSX_PAT"
